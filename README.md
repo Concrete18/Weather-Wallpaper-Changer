@@ -3,13 +3,29 @@ This is a script that runs in the background setting wallpapers based on the tim
 It uses Open Weather to check the sunset and sun rise times and weather. I convert the sunset and sunrise times using code to determine if it is currently sunset or sunrise, 20 minutes each, or if it is night or day.
 
 ## Tray Icon
-Click the Cloud icon to open the log file.
-Right Click to view Edit Configuration and Exit buttons.
-Edit Configuration opens the config.ini in notepad.
-Exit will close the script.
+* Click the Cloud icon to open the log file.
+* Right Click to view Edit Configuration and Exit buttons.
+* Edit Configuration opens the config.ini in notepad.
+* Exit will close the script.
+
+Icons made by https://www.flaticon.com/authors/iconixar
+
+## First Time Start up
+Run the setup.py first to generate your .ini file.
+It will ask questions for you to create it so you won't have to edit any configs yourself.
+Have your Openweather API Key and zip code/coordinates(depends on which you want to use) ready.
 
 ## Requirements
 * Open Weather API Key (Within Config File)
 * Coorinates to your location for accuracy.
 * PySimpleGUIWx Module
 * PythonWx Module
+
+## Python Techniques Used
+* Tkinter messageboxes
+* Logging
+* Requests is used to aquire weather data to generate time information
+* Full use of an Openweather API
+* Config.ini file using configparser
+* Task bar interface using * PySimpleGUIWx Module
+* Threading to allow timers/main tasks to run simultaneously with the taskbar
