@@ -1,5 +1,5 @@
 # Weather Context Control
-This is a script that runs in the background setting wallpapers based on the time of day and weather forcast every 20 minutes.
+This is a script that runs in the background setting wallpapers based on the time of day and weather forecast every 20 minutes.
 It uses Open Weather to check the sunset and sun rise times and weather. I convert the sunset and sunrise times using code to determine if it is currently sunset or sunrise, 20 minutes each, or if it is night or day.
 
 ## Tray Icon
@@ -24,7 +24,7 @@ Have your Openweather API Key and zip code/coordinates(depends on which you want
 ## Python Techniques Used
 * Tkinter messageboxes
 * Logging
-* Requests is used to aquire weather data to generate time information
+* Requests is used to acquire  weather data to generate time information
 * Full use of an Openweather API
 * Config.ini file using configparser
 * Task bar interface using * PySimpleGUIWx Module
