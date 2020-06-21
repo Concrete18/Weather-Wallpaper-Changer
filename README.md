@@ -17,7 +17,7 @@ Have your Openweather API Key and zip code/coordinates(depends on which you want
 
 ## Requirements
 * Open Weather API Key (Within Config File)
-* Coorinates to your location for accuracy.
+* Requests Module
 * PySimpleGUIWx Module
 * PythonWx Module
 
@@ -27,5 +27,5 @@ Have your Openweather API Key and zip code/coordinates(depends on which you want
 * Requests is used to acquire  weather data to generate time information
 * Full use of an Openweather API
 * Config.ini file using configparser
-* Task bar interface using * PySimpleGUIWx Module
+* Task bar interface using PySimpleGUIWx Module
 * Threading to allow timers/main tasks to run simultaneously with the taskbar

@@ -89,7 +89,7 @@ def check_weather(lat, lon, location_type, zip_code, country_code):  # Returns D
         complete_url = ''
         if location_mode == 'coord':
             complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}'
-        elif location_mode == 'zip_code':
+        elif location_mode == 'zip':
             complete_url = f'api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api_key}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
