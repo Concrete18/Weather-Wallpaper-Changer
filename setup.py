@@ -4,24 +4,32 @@ import re
 Config = configparser.RawConfigParser()
 
 
+def validator(entry):
+    is_match = False
+    while is_match is False:
+        string = input(f'\nWhat is your {entry}?\n') or 'unset'
+        if entry == 'OpenWeather API Key':
+            pattern = r'^[a-zA-Z0-9]{32}$'
+        elif entry ==  'Zip Code':
+            pattern = r'^[0-9]{5}$'
+        else:
+            pattern = r'[0-9.-]'
+        is_match = bool(re.search(pattern, string))
+        if is_match is False:
+            print(f'Invalid {entry}.')
+    return string
+
+
 def setup():
-    # api = input('What is your OpenWeather API Key?\n') or 'unset'
+    api = validator('OpenWeather API Key')
     mode = input('Do you want to use zip or coord? Zip is Default.\n') or 'zip'
     latitude, latitude, zipcode = 'unset', 'unset', 'unset'
     if mode == 'coord':
-        latitude = input('What is your latitude?\n') or 'unset'
-        longitude = input('What is your longitude?\n') or 'unset'
-        zipcode = 'unset'
+        latitude, longitude, zipcode = validator('latitude'), validator('longitude'), 'unset'
     else:
-        is_match = False
-        while is_match is False:
-            zipcode = input('\nWhat is your zip code?\n') or 'unset'
-            is_match = bool(re.match(' [0-9]{5} '," "+zipcode+" "))
-            if is_match is False:
-                print('Invalid Zip Code.')
-        latitude, longitude = 'unset', 'unset'
-    notifications = input('\nDo you want to turn on notifications for each change?\ny/n\n') or 'yes'
-    if notifications == 'n' or 'no':
+        zipcode, latitude, longitude = validator('Zip Code'), 'unset', 'unset'
+    notif_response = input('\nDo you want to turn on notifications for each change?\ny/n\n') or 'yes'
+    if notif_response == 'n' or 'no':
         notifications = '0'
     else:
         notifications = '1'
@@ -34,8 +42,9 @@ def setup():
     Config.set('Main', 'zip_code', zipcode)
     Config.set('Main', 'latitude', latitude)
     Config.set('Main', 'longitude', longitude)
-    # with open('Config.ini', 'w') as configfile:
-    #     Config.write(configfile)
+    with open('Config.ini', 'w') as configfile:
+        Config.write(configfile)
+    end = input('Config Setup is Complete\nPress Enter to Close.')
 
 
 setup()
