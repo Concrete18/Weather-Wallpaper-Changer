@@ -22,9 +22,9 @@ def validator(entry):
 
 def setup():
     api = validator('OpenWeather API Key')
-    mode = input('Do you want to use zip or coord? Zip is Default.\n') or 'zip'
+    mode = input('Do you want to use zip(1) or coord(2)?\nZip is default if nothing is entered.\n') or 'zip'
     latitude, latitude, zipcode = 'unset', 'unset', 'unset'
-    if mode == 'coord':
+    if mode == 'coord' or '2':
         latitude, longitude, zipcode = validator('latitude'), validator('longitude'), 'unset'
     else:
         zipcode, latitude, longitude = validator('Zip Code'), 'unset', 'unset'
