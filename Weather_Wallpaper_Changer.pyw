@@ -28,29 +28,66 @@ logger.addHandler(my_handler)
 root = tk.Tk()
 root.withdraw()
 
+last_wallpaper_run = ''
 Config = configparser.RawConfigParser()
+
 
 def write_to_config():
     with open('Config.ini', 'w') as configfile:
         Config.write(configfile)
 
-if os.path.exists("Config.ini") is False:
-    # subprocess.call(f"{os.getcwd()}/setup.py")
-    tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
-    logger.warning('Config missing. Run setup.py and then try again. ')
-    quit()
 
-Config.read('Config.ini')
+def create_tray():
+    tray = sg.SystemTray(menu= ['menu',['Change Location Mode', 'Change Location Info', 'E&xit']],\
+        filename='Cloud.ico', tooltip='Weather Wallpaper')
+    while True:
+        event = tray.Read()
+        print(event)
+        if event == 'Exit':
+            sys.exit()
+        elif event == 'Change Location Info':
+            lat = input('What is your Latitude')
+            lon = input('What is your Longitude')
+            Config.set('Main', 'latitude', lat)
+            latitude = lat
+            Config.set('Main', 'longitude', lon)
+            Longitude = lon
+            write_to_config()
+        elif event == 'Change Location Mode':
+            mode = ''
+            if location_mode == 'coord':
+                response = tk.messagebox.askquestion(title='Change Location Mode',\
+                    message='Want to switch to Zip Code?')
+                if response:
+                    location_mode = 'zip'
+            else:
+                response = tk.messagebox.askquestion(title='Change Location Mode',\
+                    message='Want to switch to coordinates?')
+                if response:
+                    location_mode = 'coord'
+            Config.set('Main', 'location_mode', location_mode)
+            write_to_config()
+        elif event == '__DOUBLE_CLICKED__':
+            os.system('notepad.exe ' + "Weather_Wallpaper.log")
+    return 
 
-# Icons made by https://www.flaticon.com/authors/iconixar
-tray = sg.SystemTray(menu= ['menu',['Change Location Mode', 'Change Location Info', 'E&xit']], filename='Cloud.ico', tooltip='Weather Wallpaper')
 
-api_key = Config.get('Main', 'OpenWeatherAPIKey')
-weather_notification = Config.get('Main', 'weather_notification')
-location_mode = Config.get('Main', 'Location_Mode')
-latitude, longitude= Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
-zipcode, country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
-last_wallpaper_run = ''
+def main():
+    if os.path.exists("Config.ini") is False:
+        tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
+        logger.warning('Config missing. Run setup.py and then try again. ')
+        sys.exit()
+
+    Config.read('Config.ini')
+
+    # Icons made by https://www.flaticon.com/authors/iconixar
+
+    api_key = Config.get('Main', 'OpenWeatherAPIKey')
+    weather_notification = Config.get('Main', 'weather_notification')
+    location_mode = Config.get('Main', 'Location_Mode')
+    latitude, longitude= Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
+    zipcode, country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
+    return latitude, longitude, location_mode, zipcode, country, api_key, weather_notification
 
 def set_wallpaper(time_of_day, weather, last_run):
     global last_wallpaper_run
@@ -83,15 +120,15 @@ def current_time_in_range(time1, time2):
         return True
 
 
-def check_weather(lat, lon, location_type, zip_code, country_code):  # Returns Dictionary weather_data
+def check_weather(lat, lon, location_type, zip_code, country_code, api, notif):  # Returns Dictionary weather_data
     while True:
         wait_time = 20*60
         print('Weather Check Started')
         complete_url = ''
-        if location_mode == 'coord':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}'
-        elif location_mode == 'zip':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api_key}'
+        if location_type == 'coord':
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api}'
+        elif location_type == 'zip':
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
         logger.debug(complete_url)
@@ -137,9 +174,10 @@ def check_weather(lat, lon, location_type, zip_code, country_code):  # Returns D
             logger.warning(f'Unknown weather found - {weather_description}')
             current_weather = 'Unknown'
         set_wallpaper(time_of_day, current_weather, last_wallpaper_run)
-        if weather_notification:
+        if notif:
             tray.ShowMessage('Weather Wallpaper',
-            f'It is {time_of_day} and the weather is {weather_description}.\nNext check at {current_time + dt.timedelta(seconds=wait_time)}.')
+            f'It is {time_of_day} and the weather is {weather_description}.\n\
+                Next check at {current_time + dt.timedelta(seconds=wait_time)}.')
         logger.info(f'The time of day is {time_of_day} and the weather is {weather_description}')
         next_check = current_time + dt.timedelta(seconds=wait_time)
         converted_check = next_check.strftime("%I:%M:%S %p")
@@ -147,33 +185,9 @@ def check_weather(lat, lon, location_type, zip_code, country_code):  # Returns D
         print(f'Next check at {converted_check}.')
         time.sleep(wait_time)
 
-weather_thread = threading.Thread(target=check_weather, args=(latitude, longitude, location_mode, zipcode, country), daemon=True)
-weather_thread.start()
+if __name__ == '__main__':
+    weather_thread = threading.Thread(target=check_weather, args=(main()), daemon=True)
+    weather_thread.start()
 
-while True:
-    event = tray.Read()
-    print(event)
-    if event == 'Exit':
-        quit()
-    elif event == 'Change Location Info':
-        lat = input('What is your Latitude')
-        lon = input('What is your Longitude')
-        Config.set('Main', 'latitude', lat)
-        latitude = lat
-        Config.set('Main', 'longitude', lon)
-        Longitude = lon
-        write_to_config()
-    elif event == 'Change Location Mode':
-        mode = ''
-        if location_mode == 'coord':
-            response = tk.messagebox.askquestion(title='Change Location Mode', message='Want to switch to Zip Code?')
-            if response:
-                location_mode = 'zip'
-        else:
-            response = tk.messagebox.askquestion(title='Change Location Mode', message='Want to switch to coordinates?')
-            if response:
-                location_mode = 'coord'
-        Config.set('Main', 'location_mode', location_mode)
-        write_to_config()
-    elif event == '__DOUBLE_CLICKED__':
-        os.system('notepad.exe ' + "Weather_Wallpaper.log")
+
+    create_tray()
