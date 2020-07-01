@@ -11,11 +11,26 @@ It uses Open Weather to check the sunset and sun rise times and weather. I conve
 Icons made by https://www.flaticon.com/authors/iconixar
 
 ## First Time Start up
-Run the setup.py first to generate your .ini file.
+Run the setup.py first to generate your Config.ini file.
 It will ask questions for you to create it so you won't have to edit any configs yourself.
 Have your Openweather API Key and zip code/coordinates(depends on which you want to use) ready.
 
-## Requirements
+```ini
+[Main]
+openweatherapikey = API_Key
+location_mode = zip
+weather_notification = 1
+country_code = Example:'us'
+zip_code = 5 digit zip
+latitude = coordinates
+longitude = coordinates
+```
+
+## Module Requirements
+### Run within your normal console for pip.
+```
+pip install -r requirements.txt
+```
 * Open Weather API Key (Within Config File)
 * Requests Module
 * PySimpleGUIWx Module

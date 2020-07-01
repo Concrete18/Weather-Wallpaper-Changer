@@ -11,6 +11,7 @@ import requests
 import random
 import ctypes
 import time
+import sys
 import os
 
 log_formatter = lg.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%m-%d-%Y %I:%M:%S %p')
@@ -90,16 +91,16 @@ def check_weather(lat, lon, location_type, zip_code, country_code):  # Returns D
         if location_mode == 'coord':
             complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}'
         elif location_mode == 'zip':
-            complete_url = f'api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api_key}'
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api_key}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
         logger.debug(complete_url)
-        response = requests.get(complete_url)  # get method of requests module
-        x = response.json()  # json method of response object that converts json format data into python format data
-        if x["cod"] == "404":  # Check to see if data is not found
+        try:
+            response = requests.get(complete_url)  # get method of requests module
+            x = response.json()  # json method of response object that converts json format data into python format data
+        except:
             logger.critical('No data found for entered location.')
-            time.sleep(wait_time)
-            check_weather(latitude, longitude, location_mode, zipcode, country)
+            sys.exit()
         z = x["weather"]  # store the value of "weather" key in variable z
         weather_description = z[0]["description"]
         sunset_time = utc_convert(x["sys"]['sunset'])
