@@ -36,18 +36,16 @@ def Write_to_Config():
         Config.write(configfile)
 
 class Weather:
-
     def __init__(self):
         Config.read('Config.ini')
         self.title = 'Weather Wallpaper Changer'
-        self.api = Config.get('Main', 'OpenWeatherAPIKey')
+        self.api_key = Config.get('Main', 'OpenWeatherAPIKey')
         self.location_mode = Config.get('Main', 'Location_Mode')
         self.lat, self.lon = Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
         self.zipcode, self.country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
         self.last_wallpaper_run = ''
         self.wait_time = 20 * 60
         self.time_of_day = ''
-        self.weather = ''
         self.current_weather = ''
 
     def Create_Tray(self):
@@ -68,8 +66,7 @@ class Weather:
     def Check_Weather(self):  # Returns Dictionary weather_data
         complete_url = ''
         if self.location_mode == 'coord':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?'
-            f'lat={self.lat}&lon={self.lon}&appid={self.api_key}'
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}'
         elif self.location_mode == 'zip':
             complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
         else:
@@ -82,6 +79,7 @@ class Weather:
             logger.critical('No data found for entered location.')
             sys.exit()
         z = x["weather"]  # store the value of "weather" key in variable z
+        print(z)
         weather_description = z[0]["description"]
         sunset_time = self.UTC_Convert(x["sys"]['sunset'])
         sunrise_start = self.UTC_Convert(x["sys"]['sunrise'])
