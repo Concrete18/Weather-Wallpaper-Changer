@@ -28,16 +28,11 @@ def setup():
         latitude, longitude, zipcode = validator('latitude'), validator('longitude'), 'unset'
     else:
         zipcode, latitude, longitude = validator('Zip Code'), 'unset', 'unset'
-    notif_response = input('\nDo you want to turn on notifications for each change?\ny/n\n') or 'yes'
-    if notif_response == 'n' or 'no':
-        notifications = '0'
-    else:
-        notifications = '1'
+
     country = input('\nWhat is your country code code?\n') or 'us'
     Config.add_section('Main')
     Config.set('Main', 'openweatherapikey', api)
     Config.set('Main', 'location_mode', mode)
-    Config.set('Main', 'weather_notification', notifications)
     Config.set('Main', 'country_code', country)
     Config.set('Main', 'zip_code', zipcode)
     Config.set('Main', 'latitude', latitude)

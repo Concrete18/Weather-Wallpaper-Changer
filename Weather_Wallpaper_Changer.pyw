@@ -28,107 +28,50 @@ logger.addHandler(my_handler)
 root = tk.Tk()
 root.withdraw()
 
-last_wallpaper_run = ''
 Config = configparser.RawConfigParser()
+tray = sg.SystemTray(menu= ['menu',['E&xit']], filename='Cloud.ico')
 
-
-def write_to_config():
+def Write_to_Config():
     with open('Config.ini', 'w') as configfile:
         Config.write(configfile)
 
+class Weather:
 
-def create_tray():
-    tray = sg.SystemTray(menu= ['menu',['Change Location Mode', 'Change Location Info', 'E&xit']],\
-        filename='Cloud.ico', tooltip='Weather Wallpaper')
-    while True:
-        event = tray.Read()
-        print(event)
-        if event == 'Exit':
-            sys.exit()
-        elif event == 'Change Location Info':
-            lat = input('What is your Latitude')
-            lon = input('What is your Longitude')
-            Config.set('Main', 'latitude', lat)
-            latitude = lat
-            Config.set('Main', 'longitude', lon)
-            Longitude = lon
-            write_to_config()
-        elif event == 'Change Location Mode':
-            mode = ''
-            if location_mode == 'coord':
-                response = tk.messagebox.askquestion(title='Change Location Mode',\
-                    message='Want to switch to Zip Code?')
-                if response:
-                    location_mode = 'zip'
-            else:
-                response = tk.messagebox.askquestion(title='Change Location Mode',\
-                    message='Want to switch to coordinates?')
-                if response:
-                    location_mode = 'coord'
-            Config.set('Main', 'location_mode', location_mode)
-            write_to_config()
-        elif event == '__DOUBLE_CLICKED__':
-            os.system('notepad.exe ' + "Weather_Wallpaper.log")
-    return 
+    def __init__(self):
+        Config.read('Config.ini')
+        self.title = 'Weather Wallpaper Changer'
+        self.api = Config.get('Main', 'OpenWeatherAPIKey')
+        self.location_mode = Config.get('Main', 'Location_Mode')
+        self.lat, self.lon = Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
+        self.zipcode, self.country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
+        self.last_wallpaper_run = ''
+        self.wait_time = 20 * 60
+        self.time_of_day = ''
+        self.weather = ''
+        self.current_weather = ''
+
+    def Create_Tray(self):
+        tray.update(tooltip=self.title)
+        while True:
+            event = tray.Read()
+            # print(event)
+            if event == 'Exit':
+                sys.exit()
+
+    @staticmethod
+    def UTC_Convert(utc):
+        time_list = time.localtime(utc)
+        converted_time = dt.datetime(time_list[0], time_list[1], time_list[2], time_list[3], time_list[4])
+        return converted_time
 
 
-def main():
-    if os.path.exists("Config.ini") is False:
-        tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
-        logger.warning('Config missing. Run setup.py and then try again. ')
-        sys.exit()
-
-    Config.read('Config.ini')
-
-    # Icons made by https://www.flaticon.com/authors/iconixar
-
-    api_key = Config.get('Main', 'OpenWeatherAPIKey')
-    weather_notification = Config.get('Main', 'weather_notification')
-    location_mode = Config.get('Main', 'Location_Mode')
-    latitude, longitude= Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
-    zipcode, country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
-    return latitude, longitude, location_mode, zipcode, country, api_key, weather_notification
-
-def set_wallpaper(time_of_day, weather, last_run):
-    global last_wallpaper_run
-    if weather == 'Unknown':
-        pass
-    elif f'{time_of_day}, {weather}' != last_wallpaper_run:
-        wallpaper_list = []
-        wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
-        for file in os.listdir(f'{wallpaper_folder}\\{time_of_day} - {weather}'):
-            wallpaper_list.append(file)
-        random_pick = random.randrange(0, len(wallpaper_list))
-        path = f"{wallpaper_folder}\\{time_of_day} - {weather}\\{wallpaper_list[random_pick]}"
-        SPI_SETDESKWALLPAPER = 20
-        ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, path, 3)
-        logger.info(f'Wallpaper set to {wallpaper_list[random_pick]}')
-        last_wallpaper_run = f'{time_of_day}, {weather}'
-    else:
-        logger.info('Wallpaper is already set.')
-
-
-def utc_convert(utc):
-    time_list = time.localtime(utc)
-    converted_time = dt.datetime(time_list[0], time_list[1], time_list[2], time_list[3], time_list[4])
-    return converted_time
-
-
-def current_time_in_range(time1, time2):
-    current_time = dt.datetime.now()
-    if time1 < current_time < time2:
-        return True
-
-
-def check_weather(lat, lon, location_type, zip_code, country_code, api, notif):  # Returns Dictionary weather_data
-    while True:
-        wait_time = 20*60
-        print('Weather Check Started')
+    def Check_Weather(self):  # Returns Dictionary weather_data
         complete_url = ''
-        if location_type == 'coord':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api}'
-        elif location_type == 'zip':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={zip_code},{country_code}&appid={api}'
+        if self.location_mode == 'coord':
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?'
+            f'lat={self.lat}&lon={self.lon}&appid={self.api_key}'
+        elif self.location_mode == 'zip':
+            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
         logger.debug(complete_url)
@@ -140,8 +83,8 @@ def check_weather(lat, lon, location_type, zip_code, country_code, api, notif): 
             sys.exit()
         z = x["weather"]  # store the value of "weather" key in variable z
         weather_description = z[0]["description"]
-        sunset_time = utc_convert(x["sys"]['sunset'])
-        sunrise_start = utc_convert(x["sys"]['sunrise'])
+        sunset_time = self.UTC_Convert(x["sys"]['sunset'])
+        sunrise_start = self.UTC_Convert(x["sys"]['sunrise'])
         sunset_length, sunrise_length = 20, 20
         sunrise_end = sunrise_start + dt.timedelta(minutes=sunrise_length, seconds=-1)
         sunset_end = sunset_time + dt.timedelta(seconds=-1)
@@ -154,40 +97,59 @@ def check_weather(lat, lon, location_type, zip_code, country_code, api, notif): 
         logger.debug(f'Day ends at {day_end}')
         logger.debug(f'Sunset starts at {sunset_start}')
         logger.debug(f'Sunset ends at {sunset_end}')
-        current_time = dt.datetime.now()
         # Checks Time of day
-        if current_time_in_range(sunrise_start, sunrise_end) or current_time_in_range(sunset_start, sunset_end):
-            time_of_day = 'Sunset, Sunrise'
-        elif current_time_in_range(day_start, day_end):
-            time_of_day = 'Day'
+        if sunrise_start < dt.datetime.now() < sunrise_end or sunset_start < dt.datetime.now() < sunset_end:
+            self.time_of_day = 'Sunset, Sunrise'
+        elif day_start < dt.datetime.now() < day_end:
+            self.time_of_day = 'Day'
         else:
-            time_of_day = 'Night'
-        # Checks Weather
+            self.time_of_day = 'Night'
         weather_list = {
             'clear sky': 'clear sky', 'rain': 'rain', 'light rain': 'rain', 'moderate rain': 'rain',
             'heavy intensity rain': 'rain', 'partly cloudy': 'partly cloudy', 'broken clouds': 'partly cloudy',
             'few clouds': 'partly cloudy', 'scattered clouds': 'partly cloudy', 'overcast clouds': 'overcast',
             'thunderstorm': 'storm', 'haze': 'haze', 'mist': 'haze', 'fog': 'haze'}
         if weather_description in weather_list:
-            current_weather = weather_list[weather_description].title()
+            self.current_weather = weather_list[weather_description].title()
         else:
             logger.warning(f'Unknown weather found - {weather_description}')
-            current_weather = 'Unknown'
-        set_wallpaper(time_of_day, current_weather, last_wallpaper_run)
-        if notif:
-            tray.ShowMessage('Weather Wallpaper',
-            f'It is {time_of_day} and the weather is {weather_description}.\n\
-                Next check at {current_time + dt.timedelta(seconds=wait_time)}.')
-        logger.info(f'The time of day is {time_of_day} and the weather is {weather_description}')
-        next_check = current_time + dt.timedelta(seconds=wait_time)
-        converted_check = next_check.strftime("%I:%M:%S %p")
-        logger.info(f'Next check at {converted_check}.')
-        print(f'Next check at {converted_check}.')
-        time.sleep(wait_time)
+            self.current_weather = 'Unknown'
+
+
+    def Set_Wallpaper(self):  # Sets Wallpaper based on Check_Weather function.
+        if self.current_weather == 'Unknown':
+            pass
+        elif f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
+            wallpaper_list = []
+            wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
+            for file in os.listdir(f'{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}'):
+                wallpaper_list.append(file)
+            random_pick = random.randrange(0, len(wallpaper_list))
+            path = f"{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}\\{wallpaper_list[random_pick]}"
+            SPI_SETDESKWALLPAPER = 20
+            ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, path, 3)
+            logger.info(f'Wallpaper set to {wallpaper_list[random_pick]}')
+            last_wallpaper_run = f'{self.time_of_day}, {self.current_weather}'
+        else:
+            logger.info('Wallpaper is already set.')
+
+
+    def Run(self):
+        if os.path.exists("Config.ini") is False:
+            tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
+            logger.warning('Config missing. Run setup.py and then try again. ')
+            sys.exit()
+        while True:
+            self.Check_Weather()
+            self.Set_Wallpaper()
+            logger.info(f'The time of day is {self.time_of_day} and the weather is {self.current_weather}')
+            next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
+            tray.update(tooltip=f'{self.title}\nNext check at {next_check.strftime("%I:%M:%S %p")}.')
+            time.sleep(self.wait_time)
+
 
 if __name__ == '__main__':
-    weather_thread = threading.Thread(target=check_weather, args=(main()), daemon=True)
+    Main = Weather()
+    weather_thread = threading.Thread(target=Main.Run, daemon=True)
     weather_thread.start()
-
-
-    create_tray()
+    Main.Create_Tray()
