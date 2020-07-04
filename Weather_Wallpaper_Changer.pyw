@@ -44,6 +44,7 @@ class Weather:
         self.lat, self.lon = Config.get('Main', 'Latitude'), Config.get('Main', 'Longitude')
         self.zipcode, self.country = Config.get('Main', 'zip_code'), Config.get('Main', 'country_code')
         self.last_wallpaper_run = ''
+        self.complete_url = ''
         self.wait_time = 20 * 60
         self.time_of_day = ''
         self.current_weather = ''
@@ -63,23 +64,26 @@ class Weather:
         return converted_time
 
 
-    def Check_Weather(self):  # Returns Dictionary weather_data
+    def Create_URL(self):
         complete_url = ''
         if self.location_mode == 'coord':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}'
+            self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}'
         elif self.location_mode == 'zip':
-            complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
+            self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
-        logger.debug(complete_url)
+        logger.debug(self.complete_url)
+
+
+    def Check_Weather(self):  # Returns Dictionary weather_data
+        self.Create_URL()
         try:
-            response = requests.get(complete_url)  # get method of requests module
+            response = requests.get(self.complete_url)  # get method of requests module
             x = response.json()  # json method of response object that converts json format data into python format data
         except:
             logger.critical('No data found for entered location.')
             sys.exit()
         z = x["weather"]  # store the value of "weather" key in variable z
-        print(z)
         weather_description = z[0]["description"]
         sunset_time = self.UTC_Convert(x["sys"]['sunset'])
         sunrise_start = self.UTC_Convert(x["sys"]['sunrise'])
