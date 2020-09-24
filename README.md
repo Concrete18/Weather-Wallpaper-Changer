@@ -47,7 +47,7 @@ pip install -r requirements.txt
 
 * Tkinter messageboxes
 * Logging
-* Requests is used to acquire  weather data to generate time information
+* Requests is used to acquire weather data to generate time information via a REST API
 * Full use of an Openweather API
 * Config.ini file using configparser
 * Task bar interface using PySimpleGUIWx Module
