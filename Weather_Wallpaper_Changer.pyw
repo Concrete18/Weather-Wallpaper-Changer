@@ -108,9 +108,10 @@ class Weather:
             self.time_of_day = 'Night'
         weather_list = {
             'clear sky': 'clear sky', 'rain': 'rain', 'light rain': 'rain', 'moderate rain': 'rain',
-            'heavy intensity rain': 'rain', 'partly cloudy': 'partly cloudy', 'broken clouds': 'partly cloudy',
-            'few clouds': 'partly cloudy', 'scattered clouds': 'partly cloudy', 'overcast clouds': 'overcast',
-            'thunderstorm': 'storm', 'haze': 'haze', 'mist': 'haze', 'fog': 'haze'}
+            'heavy intensity rain': 'rain', 'very heavy rain': 'rain', 'thunderstorm with heavy rain': 'rain',
+            'partly cloudy': 'partly cloudy', 'broken clouds': 'partly cloudy', 'few clouds': 'partly cloudy',
+            'scattered clouds': 'partly cloudy', 'overcast clouds': 'overcast','thunderstorm': 'storm', 'haze': 'haze',
+            'mist': 'haze', 'fog': 'haze'}
         if weather_description in weather_list:
             self.current_weather = weather_list[weather_description].title()
         else:
@@ -148,10 +149,3 @@ class Weather:
             next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
             tray.update(tooltip=f'{self.title}\nNext check at {next_check.strftime("%I:%M:%S %p")}.')
             time.sleep(self.wait_time)
-
-
-if __name__ == '__main__':
-    Main = Weather()
-    weather_thread = threading.Thread(target=Main.Run, daemon=True)
-    weather_thread.start()
-    Main.Create_Tray()
