@@ -1,12 +1,10 @@
 from logging.handlers import RotatingFileHandler
-from tkinter import messagebox
+from threading import Thread
 import PySimpleGUIWx as sg
 import datetime as dt
 import logging as lg
 import tkinter as tk
 import configparser
-import subprocess
-import threading
 import requests
 import random
 import ctypes
@@ -50,32 +48,35 @@ class Weather:
         self.current_weather = ''
 
     def Create_Tray(self):
+        '''Initializes Tray'''
         tray.update(tooltip=self.title)
         while True:
             event = tray.Read()
-            # print(event)
+            print(event)
             if event == 'Exit':
                 sys.exit()
 
     @staticmethod
     def UTC_Convert(utc):
+        '''Converts UTC to datetime object'''
         time_list = time.localtime(utc)
         converted_time = dt.datetime(time_list[0], time_list[1], time_list[2], time_list[3], time_list[4])
         return converted_time
 
 
     def Create_URL(self):
-        complete_url = ''
-        if self.location_mode == 'coord':
+        '''Sets up the URL depending on config settings'''
+        if self.location_mode == 'coord':  # Sets url to use coordinates
             self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}'
-        elif self.location_mode == 'zip':
+        elif self.location_mode == 'zip':# Sets url to use zip code
             self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
         else:
             logger.error(f'Missing Location_Mode value in config.')
         logger.debug(self.complete_url)
 
 
-    def Check_Weather(self):  # Returns Dictionary weather_data
+    def Check_Weather(self):
+        '''Returns Dictionary weather_data'''
         self.Create_URL()
         try:
             response = requests.get(self.complete_url)  # get method of requests module
@@ -95,7 +96,7 @@ class Weather:
         day_end = sunset_start + dt.timedelta(seconds=-1)
         logger.debug(f'Sunrise starts at {sunrise_start}')
         logger.debug(f'Sunrise ends at {sunrise_end}')
-        logger.debug(f'Day Starts at {day_start}')
+        logger.debug(f'Day starts at {day_start}')
         logger.debug(f'Day ends at {day_end}')
         logger.debug(f'Sunset starts at {sunset_start}')
         logger.debug(f'Sunset ends at {sunset_end}')
@@ -106,6 +107,7 @@ class Weather:
             self.time_of_day = 'Day'
         else:
             self.time_of_day = 'Night'
+        # allows converting different OpenWeather types to supported types
         weather_list = {
             'clear sky': 'clear sky', 'rain': 'rain', 'light rain': 'rain', 'moderate rain': 'rain',
             'heavy intensity rain': 'rain', 'very heavy rain': 'rain', 'thunderstorm with heavy rain': 'rain',
@@ -119,9 +121,10 @@ class Weather:
             self.current_weather = 'Unknown'
 
 
-    def Set_Wallpaper(self):  # Sets Wallpaper based on Check_Weather function.
+    def Set_Wallpaper(self):
+        '''Sets Wallpaper based on Check_Weather function.'''
         if self.current_weather == 'Unknown':
-            pass
+            print('Uknown Weather')
         elif f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
             wallpaper_list = []
             wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
@@ -132,12 +135,13 @@ class Weather:
             SPI_SETDESKWALLPAPER = 20
             ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, path, 3)
             logger.info(f'Wallpaper set to {wallpaper_list[random_pick]}')
-            last_wallpaper_run = f'{self.time_of_day}, {self.current_weather}'
+            self.last_wallpaper_run = f'{self.time_of_day}, {self.current_weather}'
         else:
             logger.info('Wallpaper is already set.')
 
 
     def Run(self):
+        '''Runs Tray'''
         if os.path.exists("Config.ini") is False:
             tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
             logger.warning('Config missing. Run setup.py and then try again. ')
@@ -149,3 +153,11 @@ class Weather:
             next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
             tray.update(tooltip=f'{self.title}\nNext check at {next_check.strftime("%I:%M:%S %p")}.')
             time.sleep(self.wait_time)
+
+
+
+if __name__ == "__main__":
+    Main = Weather()
+    weather_thread = Thread(target=Main.Run, daemon=True)
+    weather_thread.start()
+    Main.Create_Tray()
