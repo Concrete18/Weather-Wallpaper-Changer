@@ -1,6 +1,7 @@
 import unittest
-# from unittest import TestCase
-import Weather_Wallpaper_Changer
+from Weather_Wallpaper_Changer import Weather
+
+# Work in progress
 
 class TestStringMethods(unittest.TestCase):
     # @classmethod
@@ -14,6 +15,8 @@ class TestStringMethods(unittest.TestCase):
     #     cls.wait_time = 20 * 60
     #     cls.time_of_day = ''
     #     cls.current_weather = ''
+
+    Main = Weather()
 
 
     def test_Create_URL(self):
