@@ -28,7 +28,7 @@ longitude = coordinates
 
 ## Module Requirements
 
-### Run within your normal console for pip.
+Run within your normal console for pip
 
 ```git
 pip install -r requirements.txt
