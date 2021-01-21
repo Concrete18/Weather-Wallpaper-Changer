@@ -1,45 +1,51 @@
-import configparser
+import json
 import re
 
-Config = configparser.RawConfigParser()
 
-
-def validator(entry):
+def validate_entry(entry):
     is_match = False
+    patterns = {
+        'OpenWeather API Key': r'^[a-zA-Z0-9]{32}$',
+        'zip Code': r'^[0-9]{5}$',
+        'latitude': r'[0-9.-]',
+        'longitude': r'[0-9.-]'}
     while is_match is False:
-        string = input(f'\nWhat is your {entry}?\n') or 'unset'
-        if entry == 'OpenWeather API Key':
-            pattern = r'^[a-zA-Z0-9]{32}$'
-        elif entry ==  'Zip Code':
-            pattern = r'^[0-9]{5}$'
-        else:
-            pattern = r'[0-9.-]'
-        is_match = bool(re.search(pattern, string))
-        if is_match is False:
+        string = input(f'What is your {entry}?\n') or 'unset'
+        if bool(re.search(patterns[entry], string)) is False:
             print(f'Invalid {entry}.')
-    return string
+        return string
 
 
-def setup():
-    api = validator('OpenWeather API Key')
+def config_setup():
+    '''
+    Runs through configuration setup.
+    '''
+    api = validate_entry('OpenWeather API Key')
     mode = input('Do you want to use zip(1) or coord(2)?\nZip is default if nothing is entered.\n') or 'zip'
-    latitude, latitude, zipcode = 'unset', 'unset', 'unset'
-    if mode == 'coord' or '2':
-        latitude, longitude, zipcode = validator('latitude'), validator('longitude'), 'unset'
+    if mode in ['coord', '2', 'coordinates']:
+        latitude = validate_entry('latitude')
+        longitude = validate_entry('longitude')
+        zipcode = 'unset'
     else:
-        zipcode, latitude, longitude = validator('Zip Code'), 'unset', 'unset'
+        zipcode = validate_entry('zip Code')
+        latitude, longitude = 'unset', 'unset'
+    country = input('What is your country code code?\n') or 'us'
+    check_rate_per_min = input('How often do you want the wallpaper to update in minutes? 30 is default.\n') or 30
+    # dictionary setup
+    data = {}
+    data['openweatherapikey'] = api
+    data['location_mode'] = mode
+    data['latitude'] = latitude
+    data['longitude'] = longitude
+    data['zip_code'] = zipcode
+    data['country_code'] = country
+    data['check_rate_per_min'] = check_rate_per_min
+    # writes to json file
+    json_object = json.dumps(data, indent = 4)
+    with open('config.json', "w") as outfile:
+        outfile.write(json_object)
+    input('Config Setup is Complete\nPress Enter to Close.')
 
-    country = input('\nWhat is your country code code?\n') or 'us'
-    Config.add_section('Main')
-    Config.set('Main', 'openweatherapikey', api)
-    Config.set('Main', 'location_mode', mode)
-    Config.set('Main', 'country_code', country)
-    Config.set('Main', 'zip_code', zipcode)
-    Config.set('Main', 'latitude', latitude)
-    Config.set('Main', 'longitude', longitude)
-    with open('Config.ini', 'w') as configfile:
-        Config.write(configfile)
-    end = input('Config Setup is Complete\nPress Enter to Close.')
 
-
-setup()
+if __name__ == '__main__':
+    config_setup()
