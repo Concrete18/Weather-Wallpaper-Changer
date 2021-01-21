@@ -4,38 +4,27 @@ from Weather_Wallpaper_Changer import Weather
 # Work in progress
 
 class TestStringMethods(unittest.TestCase):
-    # @classmethod
-    # def setUpClass(cls):
-    #     cls.title = 'Weather Wallpaper Changer'
-    #     cls.api_key = 54654651654564
-    #     cls.lat, cls.lon = 12, 12
-    #     cls.zipcode, cls.country = 31313, 'us'
-    #     cls.last_wallpaper_run = ''
-    #     cls.complete_url = ''
-    #     cls.wait_time = 20 * 60
-    #     cls.time_of_day = ''
-    #     cls.current_weather = ''
-
-    Main = Weather()
 
 
-    def test_Create_URL(self):
+    def test_create_url(self):
+        Main = Weather()
         # Main = setUpClass(self)
-        self.title = 'Weather Wallpaper Changer'
-        self.api_key = 54654651654564
-        self.lat, self.lon = 12, 12
-        self.zipcode, self.country = 31313, 'us'
-        self.last_wallpaper_run = ''
-        self.complete_url = ''
-        self.wait_time = 20 * 60
-        self.time_of_day = ''
-        self.current_weather = ''
+        Main.title = 'Weather Wallpaper Changer'
+        Main.api_key = 54654651654564
+        Main.lat = 12
+        Main.lon = 12
+        Main.zipcode = 31313
+        Main.country = 'us'
+        Main.complete_url = ''
         # Coordinates
-        self.location_mode = 'coord'
-        self.assertEqual(self.Create_URL(), 'http://api.openweathermap.org/data/2.5/weather?lat=12&lon=12&appid=54654651654564')
+        Main.location_mode = 'coord'
+        coord_url = 'http://api.openweathermap.org/data/2.5/weather?lat=12&lon=12&appid=54654651654564'
+        self.assertEqual(Main.create_url(), coord_url)
         # Zip Code
-        self.location_mode = 'zip'
-        self.assertEqual(self.Create_URL(), 'http://api.openweathermap.org/data/2.5/weather?zip=31313,us&appid=54654651654564')
+        Main.location_mode = 'zip'
+        zip_url = 'http://api.openweathermap.org/data/2.5/weather?zip=31313,us&appid=54654651654564'
+        self.assertEqual(Main.create_url(), zip_url)
+
 
     # def test_Weather_Check(self):
     #     self.assertEqual(ww.Weather_Check(), '')
