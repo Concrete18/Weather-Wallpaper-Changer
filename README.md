@@ -8,22 +8,24 @@ It uses Open Weather to check the sunset and sun rise times and weather. I conve
 * Hover over the icon to see the next time the script will run.
 * Exit will close the script.
 
-Icons made by <https://www.flaticon.com/authors/iconixar>
+Icons made by [iconixar on flaticon](https://www.flaticon.com/authors/iconixar").
 
 ## First Time Start up
 
-Run the setup.py first to generate your Config.ini file.
+Run the setup&#46;py first to generate your Config.json file.
 It will ask questions for you to create it so you won't have to edit any configs yourself.
-Have your Openweather API Key and zip code or coordinates ready.
+Have your Openweather API Key ready and your zip code or coordinates as well.
 
-```ini
-[Main]
-openweatherapikey = API_Key
-location_mode = zip
-country_code = Example:'us'
-zip_code = 5 digit zip
-latitude = coordinates
-longitude = coordinates
+```json
+{
+    "openweatherapikey": "insert_api_key",
+    "location_mode": "coord",
+    "country_code": "us",
+    "zip_code": "5 digit zip code",
+    "latitude": "coordinates",
+    "longitude": "coordinates",
+    "check_rate_per_min": 20
+}
 ```
 
 ## Module Requirements
@@ -49,6 +51,6 @@ pip install -r requirements.txt
 * Logging
 * Requests is used to acquire weather data to generate time information via a REST API
 * Full use of an Openweather API
-* Config.ini file using configparser
+* Config.json file using json
 * Task bar interface using PySimpleGUIWx Module
 * Threading to allow timers/main tasks to run simultaneously with the taskbar
