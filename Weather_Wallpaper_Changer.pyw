@@ -72,13 +72,15 @@ class Weather:
         '''
         Sets up the URL depending on config settings.
         '''
+        main_url = 'http://api.openweathermap.org/data/2.5/weather?'
         if self.location_mode == 'coord':  # Sets url to use coordinates
-            self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}'
+            self.complete_url = f'{main_url}lat={self.lat}&lon={self.lon}&appid={self.api_key}'
         elif self.location_mode == 'zip':# Sets url to use zip code
-            self.complete_url = f'http://api.openweathermap.org/data/2.5/weather?zip={self.zipcode},{self.country}&appid={self.api}'
+            self.complete_url = f'{main_url}zip={self.zipcode},{self.country}&appid={self.api_key}'
         else:
             self.logger.error(f'Missing Location_Mode value in config.')
         self.logger.debug(self.complete_url)
+        return self.complete_url
 
 
     def check_weather(self):
