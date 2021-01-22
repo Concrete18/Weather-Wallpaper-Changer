@@ -1,0 +1,19 @@
+{
+    "clear sky":"clear sky",
+    "rain":"rain",
+    "light rain":"rain",
+    "moderate rain":"rain",
+    "very heavy rain":"rain",
+    "heavy intensity rain":"rain",
+    "light intensity drizzle":"rain",
+    "thunderstorm with heavy rain":"rain",
+    "few clouds":"partly cloudy",
+    "partly cloudy":"partly cloudy",
+    "broken clouds":"partly cloudy",
+    "scattered clouds":"partly cloudy",
+    "overcast clouds":"overcast",
+    "thunderstorm":"storm",
+    "fog":"haze",
+    "mist":"haze",
+    "haze":"haze"
+}

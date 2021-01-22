@@ -44,6 +44,8 @@ class Weather:
         self.country = self.data['country_code']
         self.wait_time = self.data['check_rate_per_min'] * 60
         # var init
+        with open('weather_types.json') as json_file:
+            self.weather_dic = json.load(json_file)
         self.last_wallpaper_run = ''
         self.complete_url = ''
         self.time_of_day = ''
@@ -71,7 +73,7 @@ class Weather:
                 self.check_weather()
                 self.set_wallpaper()
             elif event == 'Exit':
-                break
+                exit()
 
 
     @staticmethod
@@ -105,11 +107,11 @@ class Weather:
         self.create_url()
         try:
             response = requests.get(self.complete_url)  # get method of requests module
-            data = response.json()  # json method of response object that converts json format data into python format data
+            data = response.json()  # json method of response object that converts json format data into python dict
         except:
             self.logger.critical('No data found for entered location.')
             return
-        weather = data["weather"]  # store the value of "weather" key in variable z
+        weather = data["weather"]  # store the value of "weather" key in variable weather
         self.weather_description = weather[0]["description"]
         sunset_time = self.convert_utc(data["sys"]['sunset'])
         sunrise_start = self.convert_utc(data["sys"]['sunrise'])
@@ -134,14 +136,8 @@ class Weather:
         else:
             self.time_of_day = 'Night'
         # allows converting different OpenWeather types to supported types
-        weather_list = {
-            'clear sky': 'clear sky', 'rain': 'rain', 'light rain': 'rain', 'moderate rain': 'rain',
-            'heavy intensity rain': 'rain', 'very heavy rain': 'rain', 'thunderstorm with heavy rain': 'rain',
-            'partly cloudy': 'partly cloudy', 'broken clouds': 'partly cloudy', 'few clouds': 'partly cloudy',
-            'scattered clouds': 'partly cloudy', 'overcast clouds': 'overcast','thunderstorm': 'storm', 'haze': 'haze',
-            'mist': 'haze', 'fog': 'haze'}
-        if self.weather_description in weather_list:
-            self.current_weather = weather_list[self.weather_description].title()
+        if self.weather_description in self.weather_dic:
+            self.current_weather = self.weather_dic[self.weather_description].title()
         else:
             self.logger.warning(f'Unknown weather found - {self.weather_description}')
             self.current_weather = 'Unknown'
@@ -152,7 +148,7 @@ class Weather:
         Sets Wallpaper based on check_weather function.
         '''
         if self.current_weather == 'Unknown':
-            print('Uknown Weather')
+            print('Unknown Weather')
         elif f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
             wallpaper_list = []
             wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
