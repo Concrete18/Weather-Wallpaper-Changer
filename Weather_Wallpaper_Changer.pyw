@@ -4,6 +4,7 @@ import PySimpleGUIWx as sg
 import datetime as dt
 import logging as lg
 import tkinter as tk
+from tkinter import messagebox
 import requests
 import random
 import ctypes
@@ -11,16 +12,26 @@ import json
 import time
 import os
 
-root = tk.Tk()
-root.withdraw()
-
-tray = sg.SystemTray(menu= ['menu',['E&xit']], filename='Cloud.ico')
-
 class Weather:
 
 
     def __init__(self):
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        # logger setup
+        log_formatter = lg.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%m-%d-%Y %I:%M:%S %p')
+        self.logger = lg.getLogger(__name__)
+        self.logger.setLevel(lg.INFO) # Log Level
+        my_handler = RotatingFileHandler('Weather_Wallpaper.log', maxBytes=5*1024*1024, backupCount=2)
+        my_handler.setFormatter(log_formatter)
+        self.logger.addHandler(my_handler)
+        # check for existing config file
+        if os.path.exists("config.json") is False:
+            root = tk.Tk()
+            root.withdraw()
+            msg = 'Config file is missing.\nRun setup.py and try again.'
+            messagebox.showwarning(title='Setup Helper', message=msg)
+            self.logger.warning('Config missing. Run setup.py and then try again.')
+            exit()
         # configuration
         with open('config.json') as json_file:
             self.data = json.load(json_file)
@@ -37,13 +48,9 @@ class Weather:
         self.complete_url = ''
         self.time_of_day = ''
         self.current_weather = ''
-        # logger setup
-        log_formatter = lg.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%m-%d-%Y %I:%M:%S %p')
-        self.logger = lg.getLogger(__name__)
-        self.logger.setLevel(lg.INFO) # Log Level
-        my_handler = RotatingFileHandler('Weather_Wallpaper.log', maxBytes=5*1024*1024, backupCount=2)
-        my_handler.setFormatter(log_formatter)
-        self.logger.addHandler(my_handler)
+        # PySimpleGUIWx tray init
+        actions = ['Update Weather', 'Update Wallpaper', 'Update Both', 'Exit']
+        self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
 
 
     def create_tray_and_run(self):
@@ -51,11 +58,19 @@ class Weather:
         Initializes Tray and starts main thread.
         '''
         self.run_main_loop()
-        tray.update(tooltip=self.title)
+        self.tray.update(tooltip=self.title)
         while True:
-            event = tray.Read()
+            event = self.tray.Read()
             print(event)
-            if event == 'Exit':
+            if event == 'Update Weather':
+                # TODO add weather data to icon tooltip
+                self.check_weather()
+            elif event == 'Update Wallpaper':
+                self.set_wallpaper()
+            elif event == 'Update Both':
+                self.check_weather()
+                self.set_wallpaper()
+            elif event == 'Exit':
                 break
 
 
@@ -95,7 +110,7 @@ class Weather:
             self.logger.critical('No data found for entered location.')
             return
         weather = data["weather"]  # store the value of "weather" key in variable z
-        weather_description = weather[0]["description"]
+        self.weather_description = weather[0]["description"]
         sunset_time = self.convert_utc(data["sys"]['sunset'])
         sunrise_start = self.convert_utc(data["sys"]['sunrise'])
         sunset_length, sunrise_length = 20, 20
@@ -125,10 +140,10 @@ class Weather:
             'partly cloudy': 'partly cloudy', 'broken clouds': 'partly cloudy', 'few clouds': 'partly cloudy',
             'scattered clouds': 'partly cloudy', 'overcast clouds': 'overcast','thunderstorm': 'storm', 'haze': 'haze',
             'mist': 'haze', 'fog': 'haze'}
-        if weather_description in weather_list:
-            self.current_weather = weather_list[weather_description].title()
+        if self.weather_description in weather_list:
+            self.current_weather = weather_list[self.weather_description].title()
         else:
-            self.logger.warning(f'Unknown weather found - {weather_description}')
+            self.logger.warning(f'Unknown weather found - {self.weather_description}')
             self.current_weather = 'Unknown'
 
 
@@ -158,16 +173,13 @@ class Weather:
         Starts main loop function as daemon thread.
         '''
         def callback():
-            if os.path.exists("config.json") is False:
-                tk.messagebox.showwarning(title='Setup Helper', message='Config missing.\nRun setup.py and then try again.')
-                self.logger.warning('Config missing. Run setup.py and then try again.')
-                return
             while True:
                 self.check_weather()
                 self.set_wallpaper()
                 self.logger.info(f'The time of day is {self.time_of_day} and the weather is {self.current_weather}')
                 next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
-                tray.update(tooltip=f'{self.title}\nNext check at {next_check.strftime("%I:%M:%S %p")}.')
+                next_check = f'Next check at {next_check.strftime("%I:%M:%S %p")}.'
+                self.tray.update(tooltip=f'{self.title}\n{self.weather_description.title()}\n{next_check}')
                 time.sleep(self.wait_time)
         weather_thread = Thread(target=callback, daemon=True)
         weather_thread.start()
