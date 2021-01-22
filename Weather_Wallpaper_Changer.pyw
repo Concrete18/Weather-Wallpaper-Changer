@@ -135,21 +135,19 @@ class Weather:
             self.time_of_day = 'Day'
         else:
             self.time_of_day = 'Night'
-        # allows converting different OpenWeather types to supported types
-        if self.weather_description in self.weather_dic:
+        if self.weather_description in self.weather_dic:  # converts different OpenWeather data to supported types
             self.current_weather = self.weather_dic[self.weather_description].title()
+            self.set_wallpaper()
         else:
             self.logger.warning(f'Unknown weather found - {self.weather_description}')
-            self.current_weather = 'Unknown'
+            print(f'Unknown Weather: Add {self.weather_description} to weather_types.json')
 
 
     def set_wallpaper(self):
         '''
         Sets Wallpaper based on check_weather function.
         '''
-        if self.current_weather == 'Unknown':
-            print('Unknown Weather')
-        elif f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
+        if f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
             wallpaper_list = []
             wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
             for file in os.listdir(f'{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}'):
@@ -171,7 +169,6 @@ class Weather:
         def callback():
             while True:
                 self.check_weather()
-                self.set_wallpaper()
                 self.logger.info(f'The time of day is {self.time_of_day} and the weather is {self.current_weather}')
                 next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
                 next_check = f'Next check at {next_check.strftime("%I:%M:%S %p")}.'
