@@ -25,7 +25,7 @@ class Weather:
         my_handler.setFormatter(log_formatter)
         self.logger.addHandler(my_handler)
         # check for existing config file
-        if os.path.exists("config.json") is False:
+        if not os.path.exists("config.json"):
             root = tk.Tk()
             root.withdraw()
             msg = 'Config file is missing.\nRun setup.py and try again.'
@@ -84,7 +84,8 @@ class Weather:
         Converts UTC into datetime object.
         '''
         time_list = time.localtime(utc)
-        return dt.datetime(time_list[0], time_list[1], time_list[2], time_list[3], time_list[4])
+        # return dt.datetime(time_list[0], time_list[1], time_list[2], time_list[3], time_list[4])
+        return dt.datetime(*time_list[0:4])
 
 
     def create_url(self):
@@ -107,6 +108,7 @@ class Weather:
         Checks the weather and updates the self.current_weather var with the data.
         '''
         self.create_url()
+        self.cur_temp = None
         try:
             response = requests.get(self.complete_url)  # get method of requests module
             data = response.json()  # json method of response object that converts json format data into python dict
@@ -115,42 +117,50 @@ class Weather:
             default_tray_info = f'{self.title}\nNo Data Found'
             self.tray.update(tooltip=default_tray_info)
             return
-        weather = data["weather"]  # store the value of "weather" key in variable weather
-        self.weather_description = weather[0]["description"]
-        self.cur_temp = self.convert_temp(data['main']['temp'], self.temp_unit)
-        sunset_time = self.convert_utc(data["sys"]['sunset'])
-        sunrise_start = self.convert_utc(data["sys"]['sunrise'])
-        sunset_length, sunrise_length = 20, 20
-        sunrise_end = sunrise_start + dt.timedelta(minutes=sunrise_length, seconds=-1)
-        sunset_end = sunset_time + dt.timedelta(seconds=-1)
-        sunset_start = sunset_end + dt.timedelta(minutes=-sunset_length) + dt.timedelta(seconds=1)
-        day_start = sunrise_end + dt.timedelta(seconds=1)
-        day_end = sunset_start + dt.timedelta(seconds=-1)
-        # debugging only
-        self.logger.debug(f'Sunrise starts at {sunrise_start}')
-        self.logger.debug(f'Sunrise ends at {sunrise_end}')
-        self.logger.debug(f'Day starts at {day_start}')
-        self.logger.debug(f'Day ends at {day_end}')
-        self.logger.debug(f'Sunset starts at {sunset_start}')
-        self.logger.debug(f'Sunset ends at {sunset_end}')
-        # Checks Time of day
-        if sunrise_start < dt.datetime.now() < sunrise_end or sunset_start < dt.datetime.now() < sunset_end:
-            self.time_of_day = 'Sunset, Sunrise'
-        elif day_start < dt.datetime.now() < day_end:
-            self.time_of_day = 'Day'
+        if 'weather' in data:
+            weather = data["weather"]  # store the value of "weather" key in variable weather
+            self.weather_description = weather[0]["description"]
+            if 'temp' in data['main']:
+                self.cur_temp = self.convert_temp(data['main']['temp'], self.temp_unit)
+            sunset_time = self.convert_utc(data["sys"]['sunset'])
+            sunrise_start = self.convert_utc(data["sys"]['sunrise'])
+            sunset_length, sunrise_length = 20, 20
+            sunrise_end = sunrise_start + dt.timedelta(minutes=sunrise_length, seconds=-1)
+            sunset_end = sunset_time + dt.timedelta(seconds=-1)
+            sunset_start = sunset_end + dt.timedelta(minutes=-sunset_length) + dt.timedelta(seconds=1)
+            day_start = sunrise_end + dt.timedelta(seconds=1)
+            day_end = sunset_start + dt.timedelta(seconds=-1)
+            # debugging only
+            self.logger.debug(f'Sunrise starts at {sunrise_start}')
+            self.logger.debug(f'Sunrise ends at {sunrise_end}')
+            self.logger.debug(f'Day starts at {day_start}')
+            self.logger.debug(f'Day ends at {day_end}')
+            self.logger.debug(f'Sunset starts at {sunset_start}')
+            self.logger.debug(f'Sunset ends at {sunset_end}')
+            # Checks Time of day
+            if sunrise_start < dt.datetime.now() < sunrise_end or sunset_start < dt.datetime.now() < sunset_end:
+                self.time_of_day = 'Sunset, Sunrise'
+            elif day_start < dt.datetime.now() < day_end:
+                self.time_of_day = 'Day'
+            else:
+                self.time_of_day = 'Night'
+            if self.weather_description in self.weather_dic:  # converts different OpenWeather data to supported types
+                self.current_weather = self.weather_dic[self.weather_description].title()
+                self.set_wallpaper()
+            else:
+                self.logger.warning(f'Unknown weather found - {self.weather_description}')
+                print(f'Unknown Weather: Add {self.weather_description} to weather_types.json')
+                for item in self.weather_dic:
+                    if item in self.weather_description:
+                        self.current_weather = self.weather_dic[item].title()
+                        self.logger.warning(f'Using {self.current_weather} as possible match')
+                        self.set_wallpaper()
         else:
-            self.time_of_day = 'Night'
-        if self.weather_description in self.weather_dic:  # converts different OpenWeather data to supported types
-            self.current_weather = self.weather_dic[self.weather_description].title()
-            self.set_wallpaper()
-        else:
-            self.logger.warning(f'Unknown weather found - {self.weather_description}')
-            print(f'Unknown Weather: Add {self.weather_description} to weather_types.json')
-            for item in self.weather_dic:
-                if item in self.weather_description:
-                    self.current_weather = self.weather_dic[item].title()
-                    self.logger.warning(f'Using {self.current_weather} as possible match')
-                    self.set_wallpaper()
+            self.logger.error(f'Requested data is missing weather section')
+            root = tk.Tk()
+            root.withdraw()
+            msg = f'Requested data appears to be missing the weather dictionary which is required.\n\n{data}'
+            messagebox.showwarning(title=self.title, message=msg)
 
 
     def set_wallpaper(self):
@@ -174,6 +184,9 @@ class Weather:
 
     @staticmethod
     def convert_temp(temp, unit):
+        '''
+        Converts given temperature from kelvin into Fahrenheight, Celsius or Kelvin in a nicer to read format.
+        '''
         if unit == 'f':
             return f'{round(temp*9/5-459.67, 1)}°F'
         elif unit == 'c':
@@ -189,11 +202,15 @@ class Weather:
         def callback():
             while True:
                 self.check_weather()
-                msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
-                self.logger.info(msg)
+                if self.cur_temp != None:
+                    msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
+                    weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
+                else:
+                    msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather}'
+                    weather_info = f'{self.weather_description.title()}'
                 next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
-                next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}.'
-                weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
+                next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}'
+                self.logger.info(msg)
                 self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
                 time.sleep(self.wait_time)
         weather_thread = Thread(target=callback, daemon=True)
