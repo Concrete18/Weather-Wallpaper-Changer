@@ -1,6 +1,7 @@
 {
     "clear sky":"clear sky",
     "rain":"rain",
+    "drizzle":"rain",
     "light rain":"rain",
     "moderate rain":"rain",
     "very heavy rain":"rain",
