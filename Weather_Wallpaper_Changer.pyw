@@ -37,6 +37,7 @@ class Weather:
             self.data = json.load(json_file)
         self.title = 'Weather Wallpaper Changer'
         self.api_key = self.data['openweatherapikey']
+        self.temp_unit = self.data['temp_unit']
         self.location_mode = self.data['location_mode']
         self.lat = self.data['latitude']
         self.lon = self.data['longitude']
@@ -60,7 +61,8 @@ class Weather:
         Initializes Tray and starts main thread.
         '''
         self.run_main_loop()
-        self.tray.update(tooltip=self.title)
+        default_tray_info = f'{self.title}\nSearching for Weather Data'
+        self.tray.update(tooltip=default_tray_info)
         while True:
             event = self.tray.Read()
             print(event)
@@ -110,9 +112,12 @@ class Weather:
             data = response.json()  # json method of response object that converts json format data into python dict
         except:
             self.logger.critical('No data found for entered location.')
+            default_tray_info = f'{self.title}\nNo Data Found'
+            self.tray.update(tooltip=default_tray_info)
             return
         weather = data["weather"]  # store the value of "weather" key in variable weather
         self.weather_description = weather[0]["description"]
+        self.cur_temp = self.convert_temp(data['main']['temp'], self.temp_unit)
         sunset_time = self.convert_utc(data["sys"]['sunset'])
         sunrise_start = self.convert_utc(data["sys"]['sunrise'])
         sunset_length, sunrise_length = 20, 20
@@ -141,6 +146,11 @@ class Weather:
         else:
             self.logger.warning(f'Unknown weather found - {self.weather_description}')
             print(f'Unknown Weather: Add {self.weather_description} to weather_types.json')
+            for item in self.weather_dic:
+                if item in self.weather_description:
+                    self.current_weather = self.weather_dic[item].title()
+                    self.logger.warning(f'Using {self.current_weather} as possible match')
+                    self.set_wallpaper()
 
 
     def set_wallpaper(self):
@@ -162,6 +172,16 @@ class Weather:
             self.logger.info('Wallpaper is already set.')
 
 
+    @staticmethod
+    def convert_temp(temp, unit):
+        if unit == 'f':
+            return f'{round(temp*9/5-459.67, 1)}°F'
+        elif unit == 'c':
+            return f'{round(temp-273.15, 1)}°C'
+        else:
+            return f'{round(temp, 1)}K'
+
+
     def run_main_loop(self):
         '''
         Starts main loop function as daemon thread.
@@ -169,10 +189,12 @@ class Weather:
         def callback():
             while True:
                 self.check_weather()
-                self.logger.info(f'The time of day is {self.time_of_day} and the weather is {self.current_weather}')
-                next_check = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
-                next_check = f'Next check at {next_check.strftime("%I:%M:%S %p")}.'
-                self.tray.update(tooltip=f'{self.title}\n{self.weather_description.title()}\n{next_check}')
+                msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
+                self.logger.info(msg)
+                next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
+                next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}.'
+                weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
+                self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
                 time.sleep(self.wait_time)
         weather_thread = Thread(target=callback, daemon=True)
         weather_thread.start()
