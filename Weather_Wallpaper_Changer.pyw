@@ -5,6 +5,7 @@ import datetime as dt
 import logging as lg
 import tkinter as tk
 from tkinter import messagebox
+import subprocess
 import requests
 import random
 import ctypes
@@ -24,33 +25,43 @@ class Weather:
         my_handler = RotatingFileHandler('Weather_Wallpaper.log', maxBytes=5*1024*1024, backupCount=2)
         my_handler.setFormatter(log_formatter)
         self.logger.addHandler(my_handler)
-        # check for existing config file
-        if not os.path.exists("config.json"):
-            root = tk.Tk()
-            root.withdraw()
-            msg = 'Config file is missing.\nRun setup.py and try again.'
-            messagebox.showwarning(title='Setup Helper', message=msg)
-            self.logger.warning('Config missing. Run setup.py and then try again.')
-            exit()
-        # configuration
-        with open('config.json') as json_file:
-            self.data = json.load(json_file)
-        self.title = 'Weather Wallpaper Changer'
-        self.api_key = self.data['openweatherapikey']
-        self.temp_unit = self.data['temp_unit']
-        self.location_mode = self.data['location_mode']
-        self.lat = self.data['latitude']
-        self.lon = self.data['longitude']
-        self.zipcode = self.data['zip_code']
-        self.country = self.data['country_code']
-        self.wait_time = self.data['check_rate_per_min'] * 60
         # var init
         with open('weather_types.json') as json_file:
             self.weather_dic = json.load(json_file)
+        self.title = 'Weather Wallpaper Changer'
         self.last_wallpaper_run = ''
         self.complete_url = ''
         self.time_of_day = ''
         self.current_weather = ''
+        # check for existing config file
+        if not os.path.exists("config.json"):
+            root = tk.Tk()
+            root.withdraw()
+            if messagebox.askyesno(title=self.title, message='Config is missing.\nDo you want to run setup?'):
+                subprocess.Popen(["python", 'setup.py'], shell=False)
+            else:
+                self.logger.warning('Config is missing. Run setup.py and then try again.')
+            exit()
+        # configuration
+        with open('config.json') as json_file:
+            self.data = json.load(json_file)
+        try:
+            self.api_key = self.data['openweatherapikey']
+            self.temp_unit = self.data['temp_unit']
+            self.location_mode = self.data['location_mode']
+            self.lat = self.data['latitude']
+            self.lon = self.data['longitude']
+            self.zipcode = self.data['zip_code']
+            self.country = self.data['country_code']
+            self.wait_time = self.data['check_rate_per_min'] * 60
+        except KeyError:
+            root = tk.Tk()
+            root.withdraw()
+            if messagebox.askyesno(title=self.title, message='Config is corrupted.'):
+                subprocess.Popen(["python", 'setup.py'], shell=False)
+            else:
+                self.logger.warning('Config is corrupted. Run setup.py again and then try again.')
+            exit()
         # PySimpleGUIWx tray init
         actions = ['Update Weather', 'Update Wallpaper', 'Update Both', 'Exit']
         self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
@@ -66,14 +77,15 @@ class Weather:
         while True:
             event = self.tray.Read()
             print(event)
-            if event == 'Update Weather':
-                # TODO add weather data to icon tooltip
+            if event == 'Pause/Unpause':
+                # TODO Add pausing and fix seperate functions
+                pass
+            elif event == 'Update Weather':
                 self.check_weather()
             elif event == 'Update Wallpaper':
                 self.set_wallpaper()
             elif event == 'Update Both':
                 self.check_weather()
-                self.set_wallpaper()
             elif event == 'Exit':
                 exit()
 
