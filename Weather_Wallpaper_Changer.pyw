@@ -12,6 +12,7 @@ import ctypes
 import json
 import time
 import os
+from setup import setup_config
 
 class Weather:
 
@@ -33,7 +34,22 @@ class Weather:
         self.complete_url = ''
         self.time_of_day = ''
         self.current_weather = ''
-        # check for existing config file
+        self.api_key = ''
+        self.temp_unit = ''
+        self.location_mode = ''
+        self.lat = ''
+        self.lon = ''
+        self.zipcode = ''
+        self.country = ''
+        self.check_rate = ''
+        # PySimpleGUIWx tray init
+        actions = ['Update Weather', 'Update Wallpaper', 'Update Both', 'Settings', 'Exit']
+        self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
+
+    def config_check(self):
+        '''
+        Checks for existing config file.
+        '''
         if not os.path.exists("config.json"):
             root = tk.Tk()
             root.withdraw()
@@ -45,6 +61,8 @@ class Weather:
         # configuration
         with open('config.json') as json_file:
             self.data = json.load(json_file)
+        if 'Insert' in self.data['openweatherapikey']:
+            subprocess.Popen(["python", 'setup.py'], shell=False)
         try:
             self.api_key = self.data['openweatherapikey']
             self.temp_unit = self.data['temp_unit']
@@ -53,18 +71,16 @@ class Weather:
             self.lon = self.data['longitude']
             self.zipcode = self.data['zip_code']
             self.country = self.data['country_code']
-            self.wait_time = self.data['check_rate_per_min'] * 60
+            self.check_rate = self.data['check_rate'] * 60
         except KeyError:
             root = tk.Tk()
             root.withdraw()
-            if messagebox.askyesno(title=self.title, message='Config is corrupted.'):
+            msg = 'Config is corrupted.\nDo you want to open settings to view config'
+            if messagebox.askyesno(title=self.title, message=msg):
                 subprocess.Popen(["python", 'setup.py'], shell=False)
             else:
                 self.logger.warning('Config is corrupted. Run setup.py again and then try again.')
             exit()
-        # PySimpleGUIWx tray init
-        actions = ['Update Weather', 'Update Wallpaper', 'Update Both', 'Exit']
-        self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
 
 
     def create_tray_and_run(self):
@@ -86,6 +102,8 @@ class Weather:
                 self.set_wallpaper()
             elif event == 'Update Both':
                 self.check_weather()
+            elif event == 'Settings':
+                self.create_setup_window()
             elif event == 'Exit':
                 exit()
 
@@ -220,15 +238,16 @@ class Weather:
                 else:
                     msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather}'
                     weather_info = f'{self.weather_description.title()}'
-                next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.wait_time)
+                next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.check_rate)
                 next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}'
                 self.logger.info(msg)
                 self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
-                time.sleep(self.wait_time)
+                time.sleep(self.check_rate)
         weather_thread = Thread(target=callback, daemon=True)
         weather_thread.start()
 
 
 if __name__ == "__main__":
     Main = Weather()
+    Main.config_check()
     Main.create_tray_and_run()
