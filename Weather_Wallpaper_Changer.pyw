@@ -5,7 +5,6 @@ import datetime as dt
 import logging as lg
 from tkinter import ttk, messagebox
 import tkinter as tk
-import subprocess
 import requests
 import random
 import ctypes
@@ -44,8 +43,8 @@ class Weather:
         self.complete_url = ''
         self.time_of_day = ''
         self.current_weather = ''
+        self.end_loop = 0
         # PySimpleGUIWx  and interface tray init
-        self.main_gui = tk.Tk()
         actions = ['Update Weather', 'Settings', 'Exit']
         self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
 
@@ -59,44 +58,52 @@ class Weather:
         elif entry == 'location_mode':
             if string in ['zip', 'coord']:
                 return True
+        # elif entry == 'check_rate':  # remove once it works with regex
+        #     if type(string) is int:
+        #         return True
         else:
             patterns = {
-                'openweatherapikey': r'^[a-zA-Z0-9]{32}$',
-                'zip_code': r'^[0-9]{5}$',
-                'latitude': r'[0-9.-]',
-                'longitude': r'[0-9.-]',
+                'openweatherapikey': r'^[a-zA-Z\d]{32}$',
+                'zip_code': r'^[\d]{5}$',
+                'latitude': r'[\d.-]',
+                'longitude': r'[\d.-]',
                 'country_code': r'[a-zA-Z]{2}',
-                'check_rate': r'[0-9]'}
-            validation = bool(re.search(patterns[entry], string))
+                'check_rate': r'[\d]'}
+            validation = bool(re.search(patterns[entry], str(string)))
         return validation
 
 
-    def save_to_config(self):
-        data = {}
-        data['openweatherapikey'] = self.api_entry.get()
-        data['temp_unit'] = self.temp_unit.get()
-        data['location_mode'] = self.location_mode.get()
-        data['latitude'] = self.lat_entry.get()
-        data['longitude'] = self.lon_entry.get()
-        data['zip_code'] = self.zip_entry.get()
-        data['country_code'] = self.country_code_entry.get()
-        data['check_rate'] = int(self.check_rate_entry.get())
-        for entry, string in data.items():
-            print(entry, string)
-            if self.validate_entry(entry, string) is False:
-                print('feck')
+    def create_settings_window(self):
+        '''
+        Creates settings window for updating config.
+        '''
+        def save_to_config():
+            data = {}
+            data['openweatherapikey'] = self.api_entry.get()
+            data['temp_unit'] = self.temp_unit.get()
+            data['location_mode'] = self.location_mode.get()
+            data['latitude'] = self.lat_entry.get()
+            data['longitude'] = self.lon_entry.get()
+            data['zip_code'] = self.zip_entry.get()
+            data['country_code'] = self.country_code_entry.get()
+            data['check_rate'] = int(self.check_rate_entry.get())
+            stop_save = 0
+            for entry, string in data.items():
+                if self.validate_entry(entry, string) is False:
+                    stop_save = 1
+                    print(entry, ' is invalid.' )
+            if stop_save:
                 return
             # writes to json file
-        input()
-        json_object = json.dumps(data, indent = 4)
-        with open('config.json', "w") as outfile:
-            outfile.write(json_object)
-            input('\nConfig Setup is Complete.\nPress Enter to Continue.')
+            json_object = json.dumps(data, indent = 4)
+            with open('config.json', "w") as outfile:
+                outfile.write(json_object)
+            self.main_gui.destroy
 
 
-    def create_setup_window(self):
         # Defaults
-        BoldBaseFont = "Aria;"
+        BoldBaseFont = "Arial"
+        self.main_gui = tk.Tk()
         self.main_gui.iconbitmap(self.main_gui, 'Cloud.ico')
         self.main_gui.title('Weather Wallpaper Changer')
         self.main_gui.resizable(width=False, height=False)
@@ -161,7 +168,7 @@ class Weather:
         self.check_rate_entry = ttk.Spinbox(Setup_Frame, width=5, from_=1, to=1000)
         self.check_rate_entry.grid(row=7, column=1, columnspan=1, pady=pad_y, padx=10, sticky='W')
 
-        save_button = ttk.Button(Setup_Frame, text='Save', command=self.save_to_config)
+        save_button = ttk.Button(Setup_Frame, text='Save', command=save_to_config)
         save_button.grid(row=8, columnspan=4, pady=5)
 
         if not os.path.exists("config.json"):
@@ -205,6 +212,8 @@ class Weather:
         self.zipcode = self.data['zip_code']
         self.country = self.data['country_code']
         self.check_rate = self.data['check_rate'] * 60
+        # TODO cancel then restart loop
+        self.end_loop = 1
 
 
     def config_check(self):
@@ -215,7 +224,7 @@ class Weather:
             root = tk.Tk()
             root.withdraw()
             if messagebox.askyesno(title=self.title, message='Config is missing.\nDo you want to run setup?'):
-                self.create_setup_window()
+                self.create_settings_window()
             else:
                 self.logger.warning('Config is missing. Run setup.py and then try again.')
             exit()
@@ -223,15 +232,15 @@ class Weather:
         with open('config.json') as json_file:
             self.data = json.load(json_file)
         if 'Insert' in self.data['openweatherapikey']:
-            self.create_setup_window()
+            self.create_settings_window()
         try:
             self.refresh_config()
         except KeyError:
             root = tk.Tk()
             root.withdraw()
-            msg = 'Config is corrupted.\nDo you want to open settings to view config'
+            msg = 'Config is corrupted.\nDo you want to open settings.'
             if messagebox.askyesno(title=self.title, message=msg):
-                subprocess.Popen(["python", 'setup.py'], shell=False)
+                self.create_settings_window()
             else:
                 self.logger.warning('Config is corrupted. Run setup.py again and then try again.')
             exit()
@@ -253,9 +262,9 @@ class Weather:
             elif event == 'Update Weather':
                 self.check_weather()
             elif event == 'Settings':
-                self.create_setup_window()
+                self.create_settings_window()
                 self.refresh_config()
-                print(self.location_mode)
+                self.run_main_loop()
             elif event == 'Exit':
                 exit()
 
@@ -374,24 +383,34 @@ class Weather:
             return f'{round(temp-273.15, 1)}°C'
 
 
+    def update_tray_text(self):
+        if self.cur_temp != None:
+            msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
+            weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
+        else:
+            msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather}'
+            weather_info = f'{self.weather_description.title()}'
+        next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.check_rate)
+        next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}'
+        self.logger.info(msg)
+        self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
+
+
     def run_main_loop(self):
         '''
         Starts main loop function as daemon thread.
         '''
         def callback():
             while True:
-                self.check_weather()
-                if self.cur_temp != None:
-                    msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
-                    weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
-                else:
-                    msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather}'
-                    weather_info = f'{self.weather_description.title()}'
-                next_check_obj = dt.datetime.now() + dt.timedelta(seconds=self.check_rate)
-                next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}'
-                self.logger.info(msg)
-                self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
-                time.sleep(self.check_rate)
+                self.end_loop = 0
+                wait = self.check_rate
+                while wait > 0:
+                    if self.end_loop:
+                        print('End Loop')
+                        return
+                    self.check_weather()
+                    self.update_tray_text()
+                    time.sleep(1)
         weather_thread = Thread(target=callback, daemon=True)
         weather_thread.start()
 
