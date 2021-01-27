@@ -3,22 +3,23 @@ from threading import Thread
 import PySimpleGUIWx as sg
 import datetime as dt
 import logging as lg
-from tkinter import ttk, messagebox
+from tkinter import Label, ttk, messagebox
 import tkinter as tk
 import requests
 import random
 import ctypes
 import json
 import time
+import sys
 import os
 import re
-
 
 class Weather:
 
 
     def __init__(self):
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(self.script_dir)
         # logger setup
         log_formatter = lg.Formatter('%(asctime)s %(levelname)s %(message)s', datefmt='%m-%d-%Y %I:%M:%S %p')
         self.logger = lg.getLogger(__name__)
@@ -38,12 +39,22 @@ class Weather:
         # var init
         with open('weather_types.json') as json_file:
             self.weather_dic = json.load(json_file)
+        self.template = {
+            "openweatherapikey": "Insert API Key",
+            "temp_unit": "Fahrenheit",
+            "location_mode": "zip",
+            "latitude": "Insert latitude if coord is selected",
+            "longitude": "Insert longitude if coord is selected",
+            "zip_code": "Insert zip code if zip code is selected",
+            "country_code": "Insert Country Code, USA is US",
+            "check_rate": 30}
         self.title = 'Weather Wallpaper Changer'
         self.last_wallpaper_run = ''
         self.complete_url = ''
         self.time_of_day = ''
         self.current_weather = ''
-        self.end_loop = 0
+        self.skip_wait = False
+        self.full_exit = False
         # PySimpleGUIWx  and interface tray init
         actions = ['Update Weather', 'Settings', 'Exit']
         self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
@@ -51,56 +62,53 @@ class Weather:
 
     @staticmethod
     def validate_entry(entry, string):
-        validation = False
-        if entry == 'temp_unit':
-            if string in ['Fahrenheit', 'Celsius']:
-                return True
-        elif entry == 'location_mode':
-            if string in ['zip', 'coord']:
-                return True
-        # elif entry == 'check_rate':  # remove once it works with regex
-        #     if type(string) is int:
-        #         return True
+        patterns = {
+            'openweatherapikey': r'^[\w]{32}$',
+            'temp_unit': r'^Fahrenheit|Celsius$',
+            'location_mode': r'^zip|coord$',
+            'zip_code': r'^[\d]{5}$',
+            'latitude': r'[\d.-]',
+            'longitude': r'[\d.-]',
+            'country_code': r'^[\D]{2}$',
+            'check_rate': r'[\d]'}
+        return bool(re.search(patterns[entry], str(string)))
+
+
+    def save_to_config(self):
+        data = {}
+        data['openweatherapikey'] = self.api_entry.get()
+        data['temp_unit'] = self.temp_unit.get()
+        data['location_mode'] = self.location_mode.get()
+        data['latitude'] = self.lat_entry.get()
+        data['longitude'] = self.lon_entry.get()
+        data['zip_code'] = self.zip_entry.get()
+        data['country_code'] = self.country_code_entry.get().lower()
+        data['check_rate'] = int(self.check_rate_entry.get())
+        stop_save = 0
+        invalid_entries = []
+        for entry, string in data.items():
+            if data['location_mode'] == 'zip' and entry in ['latitude', 'longitude']:
+                continue
+            elif data['location_mode'] == 'coord' and entry == 'zip_code':
+                continue
+            if self.validate_entry(entry, string) == False:
+                stop_save = 1
+                print(entry, 'is invalid.' )
+        if stop_save:
+            self.save_info.config(text='Some entries are invalid\n')
         else:
-            patterns = {
-                'openweatherapikey': r'^[a-zA-Z\d]{32}$',
-                'zip_code': r'^[\d]{5}$',
-                'latitude': r'[\d.-]',
-                'longitude': r'[\d.-]',
-                'country_code': r'[a-zA-Z]{2}',
-                'check_rate': r'[\d]'}
-            validation = bool(re.search(patterns[entry], str(string)))
-        return validation
+            # writes to json file
+            json_object = json.dumps(data, indent = 4)
+            with open('config.json', "w") as outfile:
+                outfile.write(json_object)
+            self.save_info.config(text='Settings have been saved\nYou may close this window')
+            self.skip_wait = True
 
 
     def create_settings_window(self):
         '''
         Creates settings window for updating config.
         '''
-        def save_to_config():
-            data = {}
-            data['openweatherapikey'] = self.api_entry.get()
-            data['temp_unit'] = self.temp_unit.get()
-            data['location_mode'] = self.location_mode.get()
-            data['latitude'] = self.lat_entry.get()
-            data['longitude'] = self.lon_entry.get()
-            data['zip_code'] = self.zip_entry.get()
-            data['country_code'] = self.country_code_entry.get()
-            data['check_rate'] = int(self.check_rate_entry.get())
-            stop_save = 0
-            for entry, string in data.items():
-                if self.validate_entry(entry, string) is False:
-                    stop_save = 1
-                    print(entry, ' is invalid.' )
-            if stop_save:
-                return
-            # writes to json file
-            json_object = json.dumps(data, indent = 4)
-            with open('config.json', "w") as outfile:
-                outfile.write(json_object)
-            self.main_gui.destroy
-
-
         # Defaults
         BoldBaseFont = "Arial"
         self.main_gui = tk.Tk()
@@ -113,9 +121,8 @@ class Weather:
         # self.tk_window_options(self.main_gui, window_width, window_height)
         # self.main_gui.geometry(f'{window_width}x{window_height}+{width}+{height}')
 
-        info_text = 'Settings'
-        Title = tk.Label(self.main_gui, text=info_text, font=(BoldBaseFont, 15))
-        Title.grid(columnspan=4, row=0, pady=5)
+        Title = tk.Label(self.main_gui, text='Settings', font=(BoldBaseFont, 16))
+        Title.grid(columnspan=4, row=0, pady=(5, 3))
 
         Setup_Frame = tk.Frame(self.main_gui)
         Setup_Frame.grid(columnspan=4, row=3, padx=15, pady=(0, 10))
@@ -168,21 +175,15 @@ class Weather:
         self.check_rate_entry = ttk.Spinbox(Setup_Frame, width=5, from_=1, to=1000)
         self.check_rate_entry.grid(row=7, column=1, columnspan=1, pady=pad_y, padx=10, sticky='W')
 
-        save_button = ttk.Button(Setup_Frame, text='Save', command=save_to_config)
-        save_button.grid(row=8, columnspan=4, pady=5)
+        save_button = ttk.Button(Setup_Frame, text='Save', command=self.save_to_config)
+        save_button.grid(row=8, columnspan=4, pady=(5, 0))
+
+        self.save_info = Label(text='Save before closing\n', font=(BoldBaseFont, 14))
+        self.save_info.grid(row=7, columnspan=4, pady=(0, 6))
 
         if not os.path.exists("config.json"):
             # creates config if it does not exist
-            data = {
-                "openweatherapikey": "Insert API Key",
-                "temp_unit": "Fahrenheit",
-                "location_mode": "zip",
-                "latitude": "Insert latitude if coord is selected",
-                "longitude": "Insert longitude if coord is selected",
-                "zip_code": "Insert zip code if zip code is selected",
-                "country_code": "Insert Country Code, USA is US",
-                "check_rate": 30}
-            json_object = json.dumps(data, indent = 4)
+            json_object = json.dumps(self.template, indent = 4)
             with open('config.json', "w") as outfile:
                 outfile.write(json_object)
         # opens config if it exists or after it is created
@@ -200,10 +201,38 @@ class Weather:
         self.main_gui.mainloop()
 
 
+    def config_check(self):
+        '''
+        Checks for existing config file.
+        '''
+        root = tk.Tk()
+        root.withdraw()
+        if not os.path.exists("config.json"):
+            self.create_settings_window()
+        # configuration
+        with open('config.json') as json_file:
+            self.data = json.load(json_file)
+        while 'Insert' in self.data['openweatherapikey']:
+            msg = 'Config is corrupted.\nOpening Settings.'
+            messagebox.showinfo(title=self.title, message=msg)
+            self.create_settings_window()
+        try:
+            self.refresh_config()
+        except KeyError:
+            root = tk.Tk()
+            root.withdraw()
+            msg = 'Config is corrupted.\nDo you want to open settings.'
+            messagebox.showinfo(title=self.title, message=msg)
+            self.create_settings_window()
+
+
+
     def refresh_config(self):
         '''
         Refreshes configuration from config.json
         '''
+        with open('config.json') as json_file:
+            self.data = json.load(json_file)
         self.api_key = self.data['openweatherapikey']
         self.temp_unit = self.data['temp_unit']
         self.location_mode = self.data['location_mode']
@@ -212,48 +241,16 @@ class Weather:
         self.zipcode = self.data['zip_code']
         self.country = self.data['country_code']
         self.check_rate = self.data['check_rate'] * 60
-        # TODO cancel then restart loop
-        self.end_loop = 1
-
-
-    def config_check(self):
-        '''
-        Checks for existing config file.
-        '''
-        if not os.path.exists("config.json"):
-            root = tk.Tk()
-            root.withdraw()
-            if messagebox.askyesno(title=self.title, message='Config is missing.\nDo you want to run setup?'):
-                self.create_settings_window()
-            else:
-                self.logger.warning('Config is missing. Run setup.py and then try again.')
-            exit()
-        # configuration
-        with open('config.json') as json_file:
-            self.data = json.load(json_file)
-        if 'Insert' in self.data['openweatherapikey']:
-            self.create_settings_window()
-        try:
-            self.refresh_config()
-        except KeyError:
-            root = tk.Tk()
-            root.withdraw()
-            msg = 'Config is corrupted.\nDo you want to open settings.'
-            if messagebox.askyesno(title=self.title, message=msg):
-                self.create_settings_window()
-            else:
-                self.logger.warning('Config is corrupted. Run setup.py again and then try again.')
-            exit()
 
 
     def create_tray_and_run(self):
         '''
         Initializes Tray and starts main thread.
         '''
-        self.run_main_loop()
+        self.run_check_loop()
         default_tray_info = f'{self.title}\nSearching for Weather Data'
         self.tray.update(tooltip=default_tray_info)
-        while True:
+        while not self.full_exit:
             event = self.tray.Read()
             print(event)
             if event == 'Pause/Unpause':
@@ -263,10 +260,9 @@ class Weather:
                 self.check_weather()
             elif event == 'Settings':
                 self.create_settings_window()
-                self.refresh_config()
-                self.run_main_loop()
             elif event == 'Exit':
-                exit()
+                self.skip_wait = 1
+                self.full_exit = 1
 
 
     @staticmethod
@@ -347,10 +343,7 @@ class Weather:
                         self.set_wallpaper()
         else:
             self.logger.error(f'Requested data is missing weather section')
-            root = tk.Tk()
-            root.withdraw()
-            msg = f'Requested data appears to be missing the weather dictionary which is required.\n\n{data}'
-            messagebox.showwarning(title=self.title, message=msg)
+            # TODO add tray icon notification
 
 
     def set_wallpaper(self):
@@ -359,7 +352,7 @@ class Weather:
         '''
         if f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
             wallpaper_list = []
-            wallpaper_folder = f'{os.getcwd()}\\Wallpaper_Picker_1440'
+            wallpaper_folder = f'{self.script_dir}\\Wallpaper_Picker_1440'
             for file in os.listdir(f'{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}'):
                 wallpaper_list.append(file)
             random_pick = random.randrange(0, len(wallpaper_list))
@@ -384,6 +377,9 @@ class Weather:
 
 
     def update_tray_text(self):
+        '''
+        Updates tray text.
+        '''
         if self.cur_temp != None:
             msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {self.cur_temp}'
             weather_info = f'{self.weather_description.title()} | {self.cur_temp}'
@@ -396,22 +392,24 @@ class Weather:
         self.tray.update(tooltip=f'{self.title}\n{weather_info}\n{next_check}')
 
 
-    def run_main_loop(self):
+    def run_check_loop(self):
         '''
-        Starts main loop function as daemon thread.
+        Starts main loop function as a thread.
         '''
         def callback():
-            while True:
-                self.end_loop = 0
-                wait = self.check_rate
-                while wait > 0:
-                    if self.end_loop:
-                        print('End Loop')
-                        return
-                    self.check_weather()
-                    self.update_tray_text()
+            while not self.full_exit:
+                print('Starting new action loop')
+                self.skip_wait = False
+                self.refresh_config()
+                self.check_weather()
+                self.update_tray_text()
+                wait_time = self.check_rate
+                while not self.skip_wait:
                     time.sleep(1)
-        weather_thread = Thread(target=callback, daemon=True)
+                    wait_time -= 1
+                    if wait_time <= 0:
+                        self.skip_wait = 1
+        weather_thread = Thread(target=callback)
         weather_thread.start()
 
 
