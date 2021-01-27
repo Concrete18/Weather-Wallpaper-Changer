@@ -31,6 +31,8 @@ class TestStringMethods(unittest.TestCase):
         # api key
         self.assertTrue(Main.validate_entry('openweatherapikey', 'ebb08232da61e5c0sht76563a5hf7637'))
         self.assertFalse(Main.validate_entry('openweatherapikey', '31820'))
+        self.assertFalse(Main.validate_entry('openweatherapikey', '%bb08232da61e5c0sht76563a5hf7637'))
+        self.assertFalse(Main.validate_entry('openweatherapikey', 'ebb08232da61e5c0sht76563a5hf763'))
         # temp unit
         self.assertTrue(Main.validate_entry('temp_unit', 'Fahrenheit'))
         self.assertTrue(Main.validate_entry('temp_unit', 'Celsius'))
@@ -52,12 +54,12 @@ class TestStringMethods(unittest.TestCase):
         self.assertFalse(Main.validate_entry('zip_code', 1234567))
         self.assertFalse(Main.validate_entry('zip_code', 'this is wrong'))
         # country code
-        self.assertTrue(Main.validate_entry('zip_code', '31820'))
-        self.assertFalse(Main.validate_entry('zip_code', 'this is wrong'))
+        self.assertTrue(Main.validate_entry('country_code', 'us'))
+        self.assertFalse(Main.validate_entry('country_code', 'this is wrong'))
+        self.assertFalse(Main.validate_entry('country_code', 'ussssss'))
         # check rate
         self.assertTrue(Main.validate_entry('check_rate', 20))
         self.assertTrue(Main.validate_entry('check_rate', '20'))
-
 
     # def test_Weather_Check(self):
     #     self.assertEqual(ww.Weather_Check(), '')
