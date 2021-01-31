@@ -55,6 +55,7 @@ class Weather:
         self.current_weather = ''
         self.skip_wait = False
         self.full_exit = False
+        self.pause = False
         # PySimpleGUIWx  and interface tray init
         actions = ['Update Weather', 'Settings', 'Exit']
         self.tray = sg.SystemTray(menu= ['menu', actions], filename='Cloud.ico')
@@ -75,17 +76,17 @@ class Weather:
 
 
     def save_to_config(self):
-        data = {}
-        data['openweatherapikey'] = self.api_entry.get()
-        data['temp_unit'] = self.temp_unit.get()
-        data['location_mode'] = self.location_mode.get()
-        data['latitude'] = self.lat_entry.get()
-        data['longitude'] = self.lon_entry.get()
-        data['zip_code'] = self.zip_entry.get()
-        data['country_code'] = self.country_code_entry.get().lower()
-        data['check_rate'] = int(self.check_rate_entry.get())
+        data = {
+            'openweatherapikey':self.api_entry.get(),
+            'temp_unit':self.temp_unit.get(),
+            'location_mode':self.location_mode.get(),
+            'latitude':self.lat_entry.get(),
+            'longitude':self.lon_entry.get(),
+            'zip_code':self.zip_entry.get(),
+            'country_code':self.country_code_entry.get(),
+            'check_rate':self.check_rate_entry.get(),}
+        print(data)
         stop_save = 0
-        invalid_entries = []
         for entry, string in data.items():
             if data['location_mode'] == 'zip' and entry in ['latitude', 'longitude']:
                 continue
@@ -94,6 +95,7 @@ class Weather:
             if self.validate_entry(entry, string) == False:
                 stop_save = 1
                 print(entry, 'is invalid.' )
+                print("Can't use", string)
         if stop_save:
             self.save_info.config(text='Some entries are invalid\n')
         else:
@@ -179,7 +181,7 @@ class Weather:
         save_button.grid(row=8, columnspan=4, pady=(5, 0))
 
         self.save_info = Label(text='Save before closing\n', font=(BoldBaseFont, 14))
-        self.save_info.grid(row=7, columnspan=4, pady=(0, 6))
+        self.save_info.grid(row=9, columnspan=4, pady=(0, 6))
 
         if not os.path.exists("config.json"):
             # creates config if it does not exist
@@ -191,7 +193,15 @@ class Weather:
             self.data = json.load(json_file)
         self.api_entry.insert(0, self.data['openweatherapikey'])
         self.temp_unit.set(self.data['temp_unit'])
+        if self.data['temp_unit'] == 'Fahrenheit':
+            fahrenheit_radio.invoke()
+        else:
+            celsius_radio.invoke()
         self.location_mode.set(self.data['location_mode'])
+        if self.data['location_mode'] == 'coord':
+            loc_mode_coord.invoke()
+        else:
+            loc_mode_zip.invoke()
         self.lat_entry.insert(0, self.data['latitude'])
         self.lon_entry.insert(0, self.data['longitude'])
         self.zip_entry.insert(0, self.data['zip_code'])
@@ -250,19 +260,23 @@ class Weather:
         self.run_check_loop()
         default_tray_info = f'{self.title}\nSearching for Weather Data'
         self.tray.update(tooltip=default_tray_info)
-        while not self.full_exit:
+        while True:
             event = self.tray.Read()
             print(event)
             if event == 'Pause/Unpause':
-                # TODO Add pausing and fix seperate functions
-                pass
-            elif event == 'Update Weather':
-                self.check_weather()
+                if self.pause is True:
+                    self.pause = False
+                else:
+                    self.pause = True
+                    # TODO Set to pause info for tooltip
+                    # self.tray.update(tooltip=default_tray_info)
             elif event == 'Settings':
+                # FIXME only works first time per run
                 self.create_settings_window()
             elif event == 'Exit':
+                # FIXME exit somtimes fails to work
                 self.skip_wait = 1
-                self.full_exit = 1
+                break
 
 
     @staticmethod
@@ -406,9 +420,13 @@ class Weather:
                 wait_time = self.check_rate
                 while not self.skip_wait:
                     time.sleep(1)
+                    # print(self.skip_wait, self.full_exit)
                     wait_time -= 1
                     if wait_time <= 0:
                         self.skip_wait = 1
+                    while self.pause:
+                        pass
+                print('Exited action loop')
         weather_thread = Thread(target=callback)
         weather_thread.start()
 

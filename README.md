@@ -19,6 +19,7 @@ Have your Openweather API Key ready and your zip code or coordinates as well.
 ```json
 {
     "openweatherapikey": "insert_api_key",
+    "temp_unit": "Fahrenheit",
     "location_mode": "coord",
     "country_code": "us",
     "zip_code": "5 digit zip code",
@@ -54,3 +55,8 @@ pip install -r requirements.txt
 * Config.json file using json
 * Task bar interface using PySimpleGUIWx Module
 * Threading to allow timers/main tasks to run simultaneously with the taskbar
+
+## Bugs
+
+* Settings Interface is very buggy. It only opens once and does not work well when I try to open it if a config does
+not already exist.
