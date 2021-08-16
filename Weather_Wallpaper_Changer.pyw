@@ -150,6 +150,8 @@ class Main(Logger):
                 wait_time = self.check_rate
                 skip_wait = False
                 while not skip_wait:
+                    if self.full_exit:
+                        break
                     if wait_time <= 0:
                         skip_wait = True
                     wait_time -= 1
