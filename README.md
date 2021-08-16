@@ -12,7 +12,7 @@ Icons made by [iconixar on flaticon](https://www.flaticon.com/authors/iconixar")
 
 ## First Time Start up
 
-Run the setup&#46;py first to generate your Config.json file.
+Run the setup.py first to generate your Config.json file.
 It will ask questions for you to create it so you won't have to edit any configs yourself.
 Have your Openweather API Key ready and your zip code or coordinates as well.
 
