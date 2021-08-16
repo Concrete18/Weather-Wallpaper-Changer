@@ -35,9 +35,7 @@ class Main(Logger):
     with open('weather_types.json') as json_file:
         weather_dic = json.load(json_file)
     title = 'Weather Wallpaper Changer'
-    last_wallpaper_run = ''
-    complete_url = ''
-    time_of_day = ''
+    last_wallpaper_run = 'Not yet run'
     current_weather = ''
     full_exit = False
     # PySimpleGUIWx  and interface tray init
@@ -68,35 +66,27 @@ class Main(Logger):
                 break
 
 
-    @staticmethod
-    def convert_utc(utc):
-        '''
-        Converts UTC into datetime object.
-        '''
-        time_list = time.localtime(utc)
-        return dt.datetime(*time_list[0:4])
-
-
-    def set_wallpaper(self):
+    def set_wallpaper(self, time_of_day, current_weather):
         '''
         Sets Wallpaper based on check_weather function.
         '''
-        if f'{self.time_of_day}, {self.current_weather}' != self.last_wallpaper_run:
+        if f'{time_of_day}, {current_weather}' != self.last_wallpaper_run:
             wallpaper_list = []
             wallpaper_folder = f'{self.script_dir}\\Wallpaper_Picker_1440'
-            for file in os.listdir(f'{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}'):
+            for file in os.listdir(f'{wallpaper_folder}\\{time_of_day} - {current_weather}'):
                 wallpaper_list.append(file)
             random_pick = random.randrange(0, len(wallpaper_list))
-            path = f"{wallpaper_folder}\\{self.time_of_day} - {self.current_weather}\\{wallpaper_list[random_pick]}"
+            path = f"{wallpaper_folder}\\{time_of_day} - {current_weather}\\{wallpaper_list[random_pick]}"
             SPI_SETDESKWALLPAPER = 20
             ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, path, 3)
             self.logger.info(f'Wallpaper set to {wallpaper_list[random_pick]}')
-            self.last_wallpaper_run = f'{self.time_of_day}, {self.current_weather}'
+            self.last_wallpaper_run = f'{time_of_day}, {current_weather}'
         else:
             self.logger.info('Wallpaper is already set.')
 
 
     def action(self, weather_dict):
+        temp = weather_dict['temp']
         weather_description = weather_dict['desc']
         sunrise_start = weather_dict['sunrise_start']
         sunrise_end =weather_dict['sunrise_end']
@@ -112,27 +102,28 @@ class Main(Logger):
         else:
             time_of_day = 'Night'
         if weather_description in self.weather_dic:  # converts different OpenWeather data to supported types
-            self.current_weather = self.weather_dic[weather_description].title()
-            self.set_wallpaper()
+            current_weather = self.weather_dic[weather_description].title()
+            self.set_wallpaper(time_of_day, current_weather)
         else:
             self.logger.warning(f'Unknown weather found - {weather_description}')
             print(f'Unknown Weather: Add {weather_description} to weather_types.json')
             for item in self.weather_dic:
                 if item in weather_description:
-                    self.current_weather = self.weather_dic[item].title()
-                    self.logger.warning(f'Using {self.current_weather} as possible match')
-                    self.set_wallpaper()
+                    current_weather = self.weather_dic[item].title()
+                    self.logger.warning(f'Using {current_weather} as possible match')
+                    self.set_wallpaper(time_of_day, current_weather)
+        return temp, weather_description, time_of_day, current_weather
 
 
-    def update_tray_text(self, temp=None, weather_desc=None):
+    def update_tray_text(self, temp, weather_desc, time_of_day, current_weather):
         '''
         Updates tray text.
         '''
         if temp != None:
-            msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather} Temp: {temp}'
+            msg = f'Time of Day:{time_of_day} Weather: {current_weather} Temp: {temp}'
             weather_info = f'{weather_desc.title()} | {temp}'
         else:
-            msg = f'Time of Day:{self.time_of_day} Weather: {self.current_weather}'
+            msg = f'Time of Day:{time_of_day} Weather: {current_weather}'
             weather_info = f'{weather_desc.title()}'
         next_check_obj = dt.datetime.now() + dt.timedelta(seconds=int(self.check_rate))
         next_check = f'Next check at {next_check_obj.strftime("%I:%M:%S %p")}'
@@ -154,8 +145,8 @@ class Main(Logger):
             self.check_rate
             while not self.full_exit:
                 weather = self.weather.check(self.location_mode)
-                self.action(weather)
-                self.update_tray_text()
+                temp, weather_desc, time_of_day, current_weather = self.action(weather)
+                self.update_tray_text(temp, weather_desc, time_of_day, current_weather)
                 wait_time = self.check_rate
                 skip_wait = False
                 while not skip_wait:

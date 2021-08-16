@@ -1,6 +1,6 @@
 from classes.logging import Logger
 import datetime as dt
-import requests
+import requests, time
 
 class Weather(Logger):
 
@@ -37,6 +37,15 @@ class Weather(Logger):
 
 
     @staticmethod
+    def convert_utc(utc):
+        '''
+        Converts UTC into datetime object.
+        '''
+        time_list = time.localtime(utc)
+        return dt.datetime(*time_list[0:4])
+
+
+    @staticmethod
     def convert_temp(temp, unit):
         '''
         Converts given temperature from kelvin into Fahrenheit or Celsius.
@@ -45,9 +54,9 @@ class Weather(Logger):
 
         `unit` of to conver to.
         '''
-        if unit == 'f':
+        if unit[0].lower() == 'f':
             return f'{round(temp*9/5-459.67, 1)}°F'
-        elif unit == 'c':
+        elif unit[0].lower() == 'c':
             return f'{round(temp-273.15, 1)}°C'
         else:
             raise Exception('Invalid unit of temperture.')
